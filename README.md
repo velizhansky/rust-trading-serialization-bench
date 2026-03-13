@@ -1,2 +1,29 @@
 # rust-trading-serialization-bench
-Tail latency, performance, and energy efficiency analysis of serialization protocols for low-latency trading systems in Rust
+
+Performance evaluation of serialization protocols for low-latency trading systems.
+
+## Protocols
+
+- JSON (serde_json)
+- Bincode (bincode-next)
+- Rkyv (zero-copy)
+- Protobuf (prost)
+- FlatBuffers (generated)
+
+## Build
+
+```bash
+cargo build --release
+```
+
+## Test
+
+```bash
+cargo test
+```
+
+## Run
+
+```bash
+cargo run
+```

@@ -1,0 +1,25 @@
+[package]
+name = "rust-trading-serialization-bench"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bincode-next = { version = "2.0.4", features = ["serde"] }
+bytecheck = "0.8.2"
+bytes = "1.11.0"
+chrono = "0.4.42"
+csv = "1.4.0"
+flatbuffers = "25.12.19"
+hdrhistogram = "7.5.4"
+prost = "0.14.1"
+rand = "0.9.2"
+rkyv = { version = "0.8.13", features = ["std"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+thiserror = "2.0.17"
+
+[build-dependencies]
+flatc-rust = "0.2.0"
+
+[dev-dependencies]
+criterion = "0.8.1"

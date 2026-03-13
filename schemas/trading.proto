@@ -1,0 +1,52 @@
+syntax = "proto3";
+package trading_proto;
+
+enum Side {
+  SIDE_UNSPECIFIED = 0;
+  SIDE_BUY = 1;
+  SIDE_SELL = 2;
+}
+
+enum OrderType {
+  ORDER_TYPE_UNSPECIFIED = 0;
+  ORDER_TYPE_LIMIT = 1;
+  ORDER_TYPE_MARKET = 2;
+}
+
+
+message Tick {
+  uint64 instrument_id = 1;
+  uint64 exchange_ts_ns = 2;
+  uint64 ingest_ts_ns = 3;
+  uint64 seq_num = 4;
+  int64 price = 5;
+  int64 quantity = 6;
+  Side side = 7;
+  uint64 trade_id = 8;
+}
+
+message Order {
+  uint64 instrument_id = 1;
+  string symbol = 2;
+  uint64 order_id = 3;
+  string client_order_id = 4;
+  uint64 client_ts_ns = 5;
+  Side side = 6;
+  OrderType order_type = 7;
+  int64 price = 8;
+  int64 quantity = 9;
+}
+
+message PriceLevel {
+  int64 price = 1;
+  int64 quantity = 2;
+}
+
+message OrderBook {
+  uint64 instrument_id = 1;
+  uint64 exchange_ts_ns = 2;
+  uint64 ingest_ts_ns = 3;
+  uint64 seq_num = 4;
+  repeated PriceLevel bids = 5;
+  repeated PriceLevel asks = 6;
+}

@@ -1,0 +1,52 @@
+namespace trading_fbs;
+
+enum Side: byte {
+  Unspecified = 0,
+  Buy = 1,
+  Sell = 2
+}
+
+enum OrderType: byte {
+  Unspecified = 0,
+  Limit = 1,
+  Market = 2
+}
+
+struct PriceLevel {
+  price: int64;
+  quantity: int64;
+}
+
+table Tick {
+  instrument_id: uint64;
+  exchange_ts_ns: uint64;
+  ingest_ts_ns: uint64;
+  seq_num: uint64;
+  price: int64;
+  quantity: int64;
+  side: Side;
+  trade_id: uint64;
+}
+
+table Order {
+  instrument_id: uint64;
+  symbol: string;
+  order_id: uint64;
+  client_order_id: string;
+  client_ts_ns: uint64;
+  side: Side;
+  order_type: OrderType;
+  price: int64;
+  quantity: int64;
+}
+
+table OrderBook {
+  instrument_id: uint64;
+  exchange_ts_ns: uint64;
+  ingest_ts_ns: uint64;
+  seq_num: uint64;
+  bids: [PriceLevel];
+  asks: [PriceLevel];
+}
+
+root_type Tick;
