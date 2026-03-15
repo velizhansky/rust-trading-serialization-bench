@@ -110,3 +110,101 @@ fn test_mixed_workload_distribution() {
     );
 }
 
+#[test]
+fn test_seed_determinism() {
+    let messages_default = Scenario::TickStreaming.generate_messages();
+    let messages_seed42 = Scenario::TickStreaming.generate_messages_with_seed(42);
+
+    assert_eq!(messages_default.len(), messages_seed42.len());
+
+    for (m1, m2) in messages_default.iter().zip(messages_seed42.iter()) {
+        match (m1, m2) {
+            (Message::Tick(t1), Message::Tick(t2)) => {
+                assert_eq!(t1.instrument_id, t2.instrument_id);
+                assert_eq!(t1.price, t2.price);
+                assert_eq!(t1.quantity, t2.quantity);
+                assert_eq!(t1.side, t2.side);
+                assert_eq!(t1.trade_id, t2.trade_id);
+            }
+            _ => panic!("Message type mismatch"),
+        }
+    }
+}
+
+#[test]
+fn test_seed_variation() {
+    let messages_42 = Scenario::TickStreaming.generate_messages_with_seed(42);
+    let messages_43 = Scenario::TickStreaming.generate_messages_with_seed(43);
+
+    assert_eq!(messages_42.len(), messages_43.len());
+
+    // First messages should differ with different seeds
+    match (&messages_42[0], &messages_43[0]) {
+        (Message::Tick(t1), Message::Tick(t2)) => {
+            // At least one field should differ
+            let differs = t1.instrument_id != t2.instrument_id
+                || t1.price != t2.price
+                || t1.quantity != t2.quantity
+                || t1.trade_id != t2.trade_id;
+            assert!(differs, "Different seeds should produce different messages");
+        }
+        _ => panic!("Expected Tick messages"),
+    }
+}
+
+#[test]
+fn test_burst_traffic_structure() {
+    let messages = Scenario::BurstTraffic.generate_messages();
+    assert_eq!(messages.len(), 1_000_000);
+
+    let normal_size = 900_000;
+
+    // Normal phase (first 900K): should contain all 5 message types
+    let mut has_tick = false;
+    let mut has_order = false;
+    let mut has_book_small = false;
+    let mut has_book_medium = false;
+    let mut has_book_large = false;
+
+    for msg in &messages[..normal_size] {
+        match msg {
+            Message::Tick(_) => has_tick = true,
+            Message::Order(_) => has_order = true,
+            Message::OrderBook(book) => {
+                let levels = book.bids.len();
+                if levels <= 5 {
+                    has_book_small = true;
+                } else if levels <= 20 {
+                    has_book_medium = true;
+                } else {
+                    has_book_large = true;
+                }
+            }
+        }
+    }
+
+    assert!(has_tick, "Normal phase should contain ticks");
+    assert!(has_order, "Normal phase should contain orders");
+    assert!(has_book_small, "Normal phase should contain small books");
+    assert!(has_book_medium, "Normal phase should contain medium books");
+    assert!(has_book_large, "Normal phase should contain large books");
+
+    // Burst phase (last 100K): all ticks
+    for msg in &messages[normal_size..] {
+        assert!(
+            matches!(msg, Message::Tick(_)),
+            "Burst phase should contain only ticks"
+        );
+    }
+}
+
+#[test]
+fn test_short_name_roundtrip() {
+    for scenario in all_scenarios() {
+        let short = scenario.short_name();
+        let recovered = Scenario::from_short_name(short)
+            .unwrap_or_else(|| panic!("from_short_name failed for '{}'", short));
+        assert_eq!(scenario, recovered);
+    }
+}
+

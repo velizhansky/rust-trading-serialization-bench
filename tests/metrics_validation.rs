@@ -1,5 +1,5 @@
 use rust_trading_serialization_bench::evaluation::metrics::{
-    LatencyRecorder, SizeRecorder,
+    LatencyRecorder, SizeRecorder, RunResult,
 };
 use std::time::Duration;
 
@@ -93,5 +93,93 @@ fn test_jitter_coefficient() {
     
     assert!(low_stats.jitter_coefficient < 0.1, "Low jitter should be < 0.1, got {}", low_stats.jitter_coefficient);
     assert!(high_stats.jitter_coefficient > 0.1, "High jitter should be > 0.1, got {}", high_stats.jitter_coefficient);
+}
+
+#[test]
+fn test_lsc_computation() {
+    // Values: 100, 100, 100, 100, 200
+    // Median = 100
+    // Absolute deviations from median: 0, 0, 0, 0, 100
+    // MAD = median of deviations = 0
+    // LSC = 0 / 100 = 0.0
+    let mut recorder = LatencyRecorder::new_with_raw();
+    for _ in 0..4 {
+        recorder.record_nanos(100);
+    }
+    recorder.record_nanos(200);
+    let stats = recorder.finalize();
+    assert!(stats.lsc < 0.01, "LSC should be ~0 for concentrated data, got {}", stats.lsc);
+
+    // Values: 10, 20, 30, 40, 50 (1000 of each for HDR accuracy)
+    // Median = 30, Deviations: 20, 10, 0, 10, 20, MAD = 10
+    // LSC = 10/30 ≈ 0.333
+    let mut recorder2 = LatencyRecorder::new_with_raw();
+    for _ in 0..1000 {
+        recorder2.record_nanos(10_000);
+        recorder2.record_nanos(20_000);
+        recorder2.record_nanos(30_000);
+        recorder2.record_nanos(40_000);
+        recorder2.record_nanos(50_000);
+    }
+    let stats2 = recorder2.finalize();
+    assert!(
+        (stats2.lsc - 0.333).abs() < 0.05,
+        "LSC should be ~0.333, got {}",
+        stats2.lsc
+    );
+}
+
+#[test]
+fn test_lsc_without_raw_uses_cv() {
+    // Without raw values, LSC should fall back to jitter_coefficient (CV)
+    let mut recorder = LatencyRecorder::new();
+    for i in 1..=1000 {
+        recorder.record_nanos(i * 100);
+    }
+    let stats = recorder.finalize();
+    assert!(
+        (stats.lsc - stats.jitter_coefficient).abs() < f64::EPSILON,
+        "Without raw values, LSC should equal CV"
+    );
+}
+
+#[test]
+fn test_roundtrip_histogram() {
+    let mut encode_rec = LatencyRecorder::new();
+    let mut decode_rec = LatencyRecorder::new();
+    let mut rt_rec = LatencyRecorder::new_with_raw();
+
+    for i in 0..10_000 {
+        let encode_ns = 100 + (i % 50);
+        let decode_ns = 200 + (i % 30);
+        encode_rec.record_nanos(encode_ns);
+        decode_rec.record_nanos(decode_ns);
+        rt_rec.record_nanos(encode_ns + decode_ns);
+    }
+
+    let encode_stats = encode_rec.finalize();
+    let decode_stats = decode_rec.finalize();
+    let rt_stats = rt_rec.finalize();
+
+    assert_eq!(rt_stats.sample_count, 10_000);
+    // Round-trip median should be approximately encode_median + decode_median
+    let expected_rt_median = encode_stats.median_ns + decode_stats.median_ns;
+    let tolerance = expected_rt_median / 10; // 10% tolerance for HDR quantization
+    assert!(
+        (rt_stats.median_ns as i64 - expected_rt_median as i64).unsigned_abs() < tolerance,
+        "RT median {} should be close to encode+decode median {}",
+        rt_stats.median_ns,
+        expected_rt_median
+    );
+    // RT should have LSC computed from raw values (not CV fallback)
+    assert!(rt_stats.lsc >= 0.0);
+}
+
+#[test]
+fn test_csv_header_column_count() {
+    let header = RunResult::csv_header();
+    let columns: Vec<&str> = header.split(',').collect();
+    // 4 meta + 12 encode + 12 decode + 13 rt + 4 size + 2 throughput + 3 counts = 50
+    assert_eq!(columns.len(), 50, "CSV header should have 50 columns, got {}", columns.len());
 }
 
