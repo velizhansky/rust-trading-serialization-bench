@@ -121,6 +121,55 @@ def generate_scenario_table(
     return "\n".join(lines)
 
 
+def generate_detailed_scenario_table(
+    results: list[ProtocolScenarioResult],
+    scenario: str,
+) -> str:
+    """
+    Generate detailed LaTeX table showing encode, decode, and round-trip
+    metrics separately for diagnostic analysis (Section IV-A.1).
+    """
+    scenario_results = [r for r in results if r.scenario == scenario]
+    order = {p: i for i, p in enumerate(PROTOCOL_ORDER)}
+    scenario_results.sort(key=lambda r: order.get(r.protocol, 99))
+
+    disp = SCENARIO_DISPLAY.get(scenario, scenario)
+
+    lines = []
+    lines.append(r"\begin{table*}[htbp]")
+    lines.append(r"\centering")
+    lines.append(f"\\caption{{Encode/Decode Detail for {disp}}}")
+    lines.append(f"\\label{{tab:detail_{scenario}}}")
+    lines.append(r"\begin{tabular}{l r r r r r r r r}")
+    lines.append(r"\hline")
+    lines.append(
+        r"Protocol & Enc p50 ($\mu$s) & Enc p99 ($\mu$s) & Enc TAR & Enc CV"
+        r" & Dec p50 ($\mu$s) & Dec p99 ($\mu$s) & Dec TAR & Dec CV \\"
+    )
+    lines.append(r"\hline")
+
+    for r in scenario_results:
+        name = PROTOCOL_DISPLAY.get(r.protocol, r.protocol)
+        enc_p50 = _fmt_latency_us(r.encode_p50_ns) if r.encode_p50_ns else "--"
+        enc_p99 = _fmt_latency_us(r.encode_p99_ns) if r.encode_p99_ns else "--"
+        enc_tar = _fmt_ratio(r.encode_tar_p99) if r.encode_tar_p99 else "--"
+        enc_cv = _fmt_ratio_short(r.encode_cv) if r.encode_cv else "--"
+        dec_p50 = _fmt_latency_us(r.decode_p50_ns) if r.decode_p50_ns else "--"
+        dec_p99 = _fmt_latency_us(r.decode_p99_ns) if r.decode_p99_ns else "--"
+        dec_tar = _fmt_ratio(r.decode_tar_p99) if r.decode_tar_p99 else "--"
+        dec_cv = _fmt_ratio_short(r.decode_cv) if r.decode_cv else "--"
+        lines.append(
+            f"  {name} & {enc_p50} & {enc_p99} & {enc_tar} & {enc_cv}"
+            f" & {dec_p50} & {dec_p99} & {dec_tar} & {dec_cv} \\\\"
+        )
+
+    lines.append(r"\hline")
+    lines.append(r"\end{tabular}")
+    lines.append(r"\end{table*}")
+
+    return "\n".join(lines)
+
+
 def generate_composite_score_table(
     profile_scores: dict[str, dict[tuple[str, str], float]],
     rankings: dict[str, dict[str, dict[str, int]]] | None = None,

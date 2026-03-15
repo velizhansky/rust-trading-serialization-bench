@@ -9,7 +9,7 @@ Reads all_runs.csv and computes:
 
 import pandas as pd
 import numpy as np
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from .bootstrap import bca_bootstrap_ci
 
@@ -77,6 +77,11 @@ class ProtocolScenarioResult:
     rt_cv: AggregatedMetric = None
     encode_cv: AggregatedMetric = None
     decode_cv: AggregatedMetric = None
+    # Encode/decode detail (Section IV-A.1: reported separately for diagnostics)
+    encode_p50_ns: AggregatedMetric = None
+    encode_p99_ns: AggregatedMetric = None
+    decode_p50_ns: AggregatedMetric = None
+    decode_p99_ns: AggregatedMetric = None
 
 
 def load_runs(csv_path: str) -> pd.DataFrame:
@@ -141,11 +146,12 @@ def compute_aggregated_results(
         result = ProtocolScenarioResult(
             protocol=protocol,
             scenario=scenario,
-            tlp=_aggregate_column(group, "rt_p99_ns", n_resamples),
-            tar=_aggregate_column(group, "rt_tar_p99", n_resamples),
-            lsc=_aggregate_column(group, "rt_lsc", n_resamples),
-            se=_aggregate_column(group, "size_median", n_resamples),
-            tp=_aggregate_column(group, "throughput_msg_sec", n_resamples),
+            # Primary paper metrics via METRIC_COLUMNS mapping
+            tlp=_aggregate_column(group, METRIC_COLUMNS["TLP"], n_resamples),
+            tar=_aggregate_column(group, METRIC_COLUMNS["TAR"], n_resamples),
+            lsc=_aggregate_column(group, METRIC_COLUMNS["LSC"], n_resamples),
+            se=_aggregate_column(group, METRIC_COLUMNS["SE"], n_resamples),
+            tp=_aggregate_column(group, METRIC_COLUMNS["TP"], n_resamples),
             # Diagnostics
             rt_p50_ns=_aggregate_column(group, "rt_p50_ns", n_resamples),
             rt_p999_ns=_aggregate_column(group, "rt_p999_ns", n_resamples),
@@ -155,6 +161,11 @@ def compute_aggregated_results(
             rt_cv=_aggregate_column(group, "rt_cv", n_resamples),
             encode_cv=_aggregate_column(group, "encode_cv", n_resamples),
             decode_cv=_aggregate_column(group, "decode_cv", n_resamples),
+            # Encode/decode detail
+            encode_p50_ns=_aggregate_column(group, "encode_p50_ns", n_resamples),
+            encode_p99_ns=_aggregate_column(group, "encode_p99_ns", n_resamples),
+            decode_p50_ns=_aggregate_column(group, "decode_p50_ns", n_resamples),
+            decode_p99_ns=_aggregate_column(group, "decode_p99_ns", n_resamples),
         )
         results.append(result)
 

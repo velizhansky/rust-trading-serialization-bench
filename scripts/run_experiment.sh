@@ -59,8 +59,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # --- Compute plan ------------------------------------------------------------
-NUM_PROTOCOLS=$(echo $PROTOCOLS | wc -w | tr -d ' ')
-NUM_SCENARIOS=$(echo $SCENARIOS | wc -w | tr -d ' ')
+NUM_PROTOCOLS=$(echo "$PROTOCOLS" | wc -w | tr -d ' ')
+NUM_SCENARIOS=$(echo "$SCENARIOS" | wc -w | tr -d ' ')
 NUM_SEEDS=$(( SEED_END - SEED_START + 1 ))
 TOTAL_RUNS=$(( NUM_PROTOCOLS * NUM_SCENARIOS * NUM_SEEDS ))
 
@@ -83,7 +83,7 @@ if [[ "$DRY_RUN" == "true" ]]; then
   echo ""
   for protocol in $PROTOCOLS; do
     for scenario in $SCENARIOS; do
-      for seed in $(seq $SEED_START $SEED_END); do
+      for seed in $(seq "$SEED_START" "$SEED_END"); do
         run_index=$((seed - SEED_START))
         echo "  taskset -c $CPU_CORE $BINARY --protocol $protocol --scenario $scenario --seed $seed --run-index $run_index --output-dir $OUTPUT_DIR --quiet"
       done
@@ -190,8 +190,10 @@ for protocol in $PROTOCOLS; do
         continue
       fi
 
-      # Run with optional CPU pinning
-      if $PIN_CMD $BINARY \
+      # Run with optional CPU pinning.
+      # When PIN_CMD is empty, word splitting expands it to nothing (intended).
+      # shellcheck disable=SC2086
+      if $PIN_CMD "$BINARY" \
         --protocol "$protocol" \
         --scenario "$scenario" \
         --seed "$seed" \
@@ -242,14 +244,15 @@ fi
 # Copy one JSON environment file
 FIRST_JSON=$(ls "${OUTPUT_DIR}"/run_*.json 2>/dev/null | head -1)
 if [[ -n "$FIRST_JSON" ]]; then
-  # Extract just the environment section
+  # Extract just the environment section (pass paths as arguments to avoid injection)
   python3 -c "
 import json, sys
-with open('$FIRST_JSON') as f:
+src, dst = sys.argv[1], sys.argv[2]
+with open(src) as f:
     data = json.load(f)
-with open('${OUTPUT_DIR}/environment.json', 'w') as f:
+with open(dst, 'w') as f:
     json.dump(data.get('environment', {}), f, indent=2)
-" 2>/dev/null || cp "$FIRST_JSON" "${OUTPUT_DIR}/environment.json"
+" "$FIRST_JSON" "${OUTPUT_DIR}/environment.json" 2>/dev/null || cp "$FIRST_JSON" "${OUTPUT_DIR}/environment.json"
   echo "  environment.json: copied"
 fi
 

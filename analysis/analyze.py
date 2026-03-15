@@ -43,6 +43,7 @@ from lib.tables import (
     PROTOCOL_DISPLAY,
     SCENARIO_DISPLAY,
     generate_scenario_table,
+    generate_detailed_scenario_table,
     generate_composite_score_table,
     generate_monte_carlo_table,
 )
@@ -427,6 +428,11 @@ def main():
         path = os.path.join(tables_dir, f"results_{scenario}.tex")
         with open(path, "w") as f:
             f.write(table)
+
+        detailed_table = generate_detailed_scenario_table(results, scenario)
+        path = os.path.join(tables_dir, f"results_{scenario}_detailed.tex")
+        with open(path, "w") as f:
+            f.write(detailed_table)
 
     composite_table = generate_composite_score_table(profile_scores)
     with open(os.path.join(tables_dir, "composite_scores.tex"), "w") as f:

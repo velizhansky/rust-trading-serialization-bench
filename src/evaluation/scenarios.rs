@@ -171,6 +171,8 @@ fn generate_order(rng: &mut StdRng, order_id: u64, base_ts: u64) -> Order {
     let price_idx = rng.random_range(0..BASE_PRICES.len());
     let price_variance = rng.random_range(-10000..10000);
     let quantity_base = rng.random_range(1000..50000);
+    // Orders use inverted buy probability (48% buy) vs ticks (52% buy),
+    // reflecting different market participant behavior on submission vs execution.
     let side = if rng.random_bool(1.0 - BUY_PROBABILITY) { Side::Buy } else { Side::Sell };
     let order_type = if rng.random_bool(LIMIT_ORDER_PROBABILITY) { OrderType::Limit } else { OrderType::Market };
     let ts_jitter = rng.random_range(0..20000);

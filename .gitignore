@@ -33,6 +33,10 @@ analysis/plots/*.png
 analysis/plots/*.pdf
 analysis/tables/*.tex
 
+# Python
+__pycache__/
+*.pyc
+
 # macOS
 .DS_Store
 src/.DS_Store
