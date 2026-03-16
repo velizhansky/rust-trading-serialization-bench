@@ -1,122 +1,52 @@
+//! Protobuf serialization via prost, using types generated from
+//! schemas/trading.proto at compile time (Section V-C, Table IV).
+
 use crate::messages::{Tick, Order, OrderBook, Side, OrderType};
 use prost::Message;
-#[derive(Clone, PartialEq, Message)]
-pub struct ProtoTick {
-    #[prost(uint64, tag = "1")]
-    pub instrument_id: u64,
-    #[prost(uint64, tag = "2")]
-    pub exchange_ts_ns: u64,
-    #[prost(uint64, tag = "3")]
-    pub ingest_ts_ns: u64,
-    #[prost(uint64, tag = "4")]
-    pub seq_num: u64,
-    #[prost(int64, tag = "5")]
-    pub price: i64,
-    #[prost(int64, tag = "6")]
-    pub quantity: i64,
-    #[prost(enumeration = "ProtoSide", tag = "7")]
-    pub side: i32,
-    #[prost(uint64, tag = "8")]
-    pub trade_id: u64,
+
+/// Generated Protobuf types from schemas/trading.proto via prost-build.
+mod proto {
+    include!(concat!(env!("OUT_DIR"), "/trading_proto.rs"));
 }
 
-#[derive(Clone, PartialEq, Message)]
-pub struct ProtoOrder {
-    #[prost(uint64, tag = "1")]
-    pub instrument_id: u64,
-    #[prost(string, tag = "2")]
-    pub symbol: String,
-    #[prost(uint64, tag = "3")]
-    pub order_id: u64,
-    #[prost(string, tag = "4")]
-    pub client_order_id: String,
-    #[prost(uint64, tag = "5")]
-    pub client_ts_ns: u64,
-    #[prost(enumeration = "ProtoSide", tag = "6")]
-    pub side: i32,
-    #[prost(enumeration = "ProtoOrderType", tag = "7")]
-    pub order_type: i32,
-    #[prost(int64, tag = "8")]
-    pub price: i64,
-    #[prost(int64, tag = "9")]
-    pub quantity: i64,
-}
+// --- Enum conversions ---
 
-#[derive(Clone, PartialEq, Message)]
-pub struct ProtoPriceLevel {
-    #[prost(int64, tag = "1")]
-    pub price: i64,
-    #[prost(int64, tag = "2")]
-    pub quantity: i64,
-}
-
-#[derive(Clone, PartialEq, Message)]
-pub struct ProtoOrderBook {
-    #[prost(uint64, tag = "1")]
-    pub instrument_id: u64,
-    #[prost(uint64, tag = "2")]
-    pub exchange_ts_ns: u64,
-    #[prost(uint64, tag = "3")]
-    pub ingest_ts_ns: u64,
-    #[prost(uint64, tag = "4")]
-    pub seq_num: u64,
-    #[prost(message, repeated, tag = "5")]
-    pub bids: Vec<ProtoPriceLevel>,
-    #[prost(message, repeated, tag = "6")]
-    pub asks: Vec<ProtoPriceLevel>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, prost::Enumeration)]
-#[repr(i32)]
-pub enum ProtoSide {
-    Unspecified = 0,
-    Buy = 1,
-    Sell = 2,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, prost::Enumeration)]
-#[repr(i32)]
-pub enum ProtoOrderType {
-    Unspecified = 0,
-    Limit = 1,
-    Market = 2,
-}
-
-// Conversion functions
 fn to_proto_side(side: Side) -> i32 {
     match side {
-        Side::Unspecified => ProtoSide::Unspecified as i32,
-        Side::Buy => ProtoSide::Buy as i32,
-        Side::Sell => ProtoSide::Sell as i32,
+        Side::Unspecified => proto::Side::Unspecified as i32,
+        Side::Buy => proto::Side::Buy as i32,
+        Side::Sell => proto::Side::Sell as i32,
     }
 }
 
 fn from_proto_side(side: i32) -> Side {
-    match ProtoSide::try_from(side).unwrap_or(ProtoSide::Unspecified) {
-        ProtoSide::Unspecified => Side::Unspecified,
-        ProtoSide::Buy => Side::Buy,
-        ProtoSide::Sell => Side::Sell,
+    match proto::Side::try_from(side).unwrap_or(proto::Side::Unspecified) {
+        proto::Side::Unspecified => Side::Unspecified,
+        proto::Side::Buy => Side::Buy,
+        proto::Side::Sell => Side::Sell,
     }
 }
 
 fn to_proto_order_type(order_type: OrderType) -> i32 {
     match order_type {
-        OrderType::Unspecified => ProtoOrderType::Unspecified as i32,
-        OrderType::Limit => ProtoOrderType::Limit as i32,
-        OrderType::Market => ProtoOrderType::Market as i32,
+        OrderType::Unspecified => proto::OrderType::Unspecified as i32,
+        OrderType::Limit => proto::OrderType::Limit as i32,
+        OrderType::Market => proto::OrderType::Market as i32,
     }
 }
 
 fn from_proto_order_type(order_type: i32) -> OrderType {
-    match ProtoOrderType::try_from(order_type).unwrap_or(ProtoOrderType::Unspecified) {
-        ProtoOrderType::Unspecified => OrderType::Unspecified,
-        ProtoOrderType::Limit => OrderType::Limit,
-        ProtoOrderType::Market => OrderType::Market,
+    match proto::OrderType::try_from(order_type).unwrap_or(proto::OrderType::Unspecified) {
+        proto::OrderType::Unspecified => OrderType::Unspecified,
+        proto::OrderType::Limit => OrderType::Limit,
+        proto::OrderType::Market => OrderType::Market,
     }
 }
 
+// --- Encode/Decode ---
+
 pub fn encode_tick(tick: &Tick) -> Vec<u8> {
-    let proto = ProtoTick {
+    let proto = proto::Tick {
         instrument_id: tick.instrument_id,
         exchange_ts_ns: tick.exchange_ts_ns,
         ingest_ts_ns: tick.ingest_ts_ns,
@@ -130,7 +60,7 @@ pub fn encode_tick(tick: &Tick) -> Vec<u8> {
 }
 
 pub fn decode_tick(bytes: &[u8]) -> Tick {
-    let proto = ProtoTick::decode(bytes).expect("Failed to decode Tick");
+    let proto = proto::Tick::decode(bytes).expect("Failed to decode Tick");
     Tick {
         instrument_id: proto.instrument_id,
         exchange_ts_ns: proto.exchange_ts_ns,
@@ -144,7 +74,7 @@ pub fn decode_tick(bytes: &[u8]) -> Tick {
 }
 
 pub fn encode_order(order: &Order) -> Vec<u8> {
-    let proto = ProtoOrder {
+    let proto = proto::Order {
         instrument_id: order.instrument_id,
         symbol: order.symbol.clone(),
         order_id: order.order_id,
@@ -159,7 +89,7 @@ pub fn encode_order(order: &Order) -> Vec<u8> {
 }
 
 pub fn decode_order(bytes: &[u8]) -> Order {
-    let proto = ProtoOrder::decode(bytes).expect("Failed to decode Order");
+    let proto = proto::Order::decode(bytes).expect("Failed to decode Order");
     Order {
         instrument_id: proto.instrument_id,
         symbol: proto.symbol,
@@ -174,16 +104,16 @@ pub fn decode_order(bytes: &[u8]) -> Order {
 }
 
 pub fn encode_order_book(book: &OrderBook) -> Vec<u8> {
-    let proto = ProtoOrderBook {
+    let proto = proto::OrderBook {
         instrument_id: book.instrument_id,
         exchange_ts_ns: book.exchange_ts_ns,
         ingest_ts_ns: book.ingest_ts_ns,
         seq_num: book.seq_num,
-        bids: book.bids.iter().map(|level| ProtoPriceLevel {
+        bids: book.bids.iter().map(|level| proto::PriceLevel {
             price: level.price,
             quantity: level.quantity,
         }).collect(),
-        asks: book.asks.iter().map(|level| ProtoPriceLevel {
+        asks: book.asks.iter().map(|level| proto::PriceLevel {
             price: level.price,
             quantity: level.quantity,
         }).collect(),
@@ -192,7 +122,7 @@ pub fn encode_order_book(book: &OrderBook) -> Vec<u8> {
 }
 
 pub fn decode_order_book(bytes: &[u8]) -> OrderBook {
-    let proto = ProtoOrderBook::decode(bytes).expect("Failed to decode OrderBook");
+    let proto = proto::OrderBook::decode(bytes).expect("Failed to decode OrderBook");
     OrderBook {
         instrument_id: proto.instrument_id,
         exchange_ts_ns: proto.exchange_ts_ns,
@@ -209,3 +139,22 @@ pub fn decode_order_book(bytes: &[u8]) -> OrderBook {
     }
 }
 
+// --- Traditional access (Protobuf has no zero-copy path) ---
+
+pub fn access_tick(bytes: &[u8]) -> u64 {
+    let t = decode_tick(bytes);
+    std::hint::black_box(&t);
+    t.instrument_id
+}
+
+pub fn access_order(bytes: &[u8]) -> u64 {
+    let o = decode_order(bytes);
+    std::hint::black_box(&o);
+    o.order_id
+}
+
+pub fn access_order_book(bytes: &[u8]) -> u64 {
+    let b = decode_order_book(bytes);
+    std::hint::black_box(&b);
+    b.instrument_id
+}

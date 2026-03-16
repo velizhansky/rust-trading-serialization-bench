@@ -1,3 +1,8 @@
+//! Development-only quick evaluation (all protocols × all scenarios, seed=42).
+//!
+//! NOT for paper measurements — use `bench_single_run` binary via
+//! `scripts/run_experiment.sh` for the actual experiment (Section IV-C.1).
+
 use rust_trading_serialization_bench::evaluation::metrics::RunResult;
 use rust_trading_serialization_bench::evaluation::runner::{
     EvaluationConfig, EvaluationRunner, ProtocolType,

@@ -66,22 +66,22 @@ pub fn capture_environment() -> EnvironmentInfo {
         os: read_os_name(),
         kernel_version: read_kernel_version(),
 
-        rustc_version: read_rustc_version(),
-        cargo_profile: if cfg!(debug_assertions) { "debug" } else { "release" }.to_string(),
+        // Build-time captured via env!() from build.rs (Section IV-D.6).
+        rustc_version: env!("BUILD_RUSTC_VERSION").to_string(),
+        cargo_profile: env!("BUILD_PROFILE").to_string(),
 
         cpu_governor: read_cpu_governor(),
         turbo_boost: read_turbo_boost(),
 
         timer_resolution_ns: measure_timer_resolution(),
 
-        // Crate versions from Cargo.toml — update here if dependencies change.
-        // These are recorded in the environment manifest for reproducibility (Section IV-D.6).
-        serde_json_version: "1.0.149".to_string(),
-        bincode_version: "2.0.4".to_string(),
-        rkyv_version: "0.8.13".to_string(),
-        prost_version: "0.14.1".to_string(),
-        flatbuffers_version: "25.12.19".to_string(),
-        hdrhistogram_version: "7.5.4".to_string(),
+        // Crate versions parsed from Cargo.lock at build time (single source of truth).
+        serde_json_version: env!("DEP_SERDE_JSON_VERSION").to_string(),
+        bincode_version: env!("DEP_BINCODE_VERSION").to_string(),
+        rkyv_version: env!("DEP_RKYV_VERSION").to_string(),
+        prost_version: env!("DEP_PROST_VERSION").to_string(),
+        flatbuffers_version: env!("DEP_FLATBUFFERS_VERSION").to_string(),
+        hdrhistogram_version: env!("DEP_HDRHISTOGRAM_VERSION").to_string(),
 
         warmup_messages: 5_000,
         throughput_window_secs: 5,
@@ -279,10 +279,6 @@ fn read_os_name() -> String {
 
 fn read_kernel_version() -> String {
     run_command("uname", &["-r"]).unwrap_or_else(|| "unknown".to_string())
-}
-
-fn read_rustc_version() -> String {
-    run_command("rustc", &["--version"]).unwrap_or_else(|| "unknown".to_string())
 }
 
 fn read_cpu_governor() -> String {

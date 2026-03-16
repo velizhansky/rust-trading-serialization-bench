@@ -24,11 +24,11 @@ echo ""
 echo "[1/7] Installing system packages..."
 if command -v apt-get &>/dev/null; then
     sudo apt-get update -qq
-    # flatbuffers-compiler provides 'flatc' needed by build.rs
+    # flatbuffers-compiler provides 'flatc', protobuf-compiler provides 'protoc' — both needed by build.rs
     # linux-tools provides 'perf' (optional, for profiling)
-    sudo apt-get install -y -qq build-essential flatbuffers-compiler \
+    sudo apt-get install -y -qq build-essential flatbuffers-compiler protobuf-compiler \
         linux-tools-common linux-tools-"$(uname -r)" curl git python3 python3-pip 2>/dev/null || \
-        sudo apt-get install -y -qq build-essential flatbuffers-compiler curl git python3 python3-pip
+        sudo apt-get install -y -qq build-essential flatbuffers-compiler protobuf-compiler curl git python3 python3-pip
     echo "  System packages installed"
 else
     echo "  WARNING: apt-get not found. Install build-essential, curl, git manually."

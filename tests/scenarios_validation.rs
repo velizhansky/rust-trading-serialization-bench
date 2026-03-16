@@ -208,3 +208,79 @@ fn test_short_name_roundtrip() {
     }
 }
 
+// --- Methodology guard tests (Section V-D) ---
+
+/// Verify symbol lengths are 3–6 characters (Section V-D.4).
+#[test]
+fn test_order_symbol_length_range() {
+    let messages = Scenario::OrderEntry.generate_messages_with_seed(42);
+    for msg in &messages[..1000] {
+        if let Message::Order(order) = msg {
+            let len = order.symbol.len();
+            assert!(
+                (3..=6).contains(&len),
+                "Symbol '{}' has length {}, expected 3–6 (Section V-D.4)",
+                order.symbol, len
+            );
+        }
+    }
+}
+
+/// Verify client_order_id lengths are 15–22 characters (Section V-D.4).
+#[test]
+fn test_order_client_order_id_length_range() {
+    let messages = Scenario::OrderEntry.generate_messages_with_seed(42);
+    for msg in &messages[..1000] {
+        if let Message::Order(order) = msg {
+            let len = order.client_order_id.len();
+            assert!(
+                (15..=22).contains(&len),
+                "client_order_id '{}' has length {}, expected 15–22 (Section V-D.4)",
+                order.client_order_id, len
+            );
+        }
+    }
+}
+
+/// Verify Order uses the same 15-instrument set as Tick and OrderBook (Section V-D.4).
+#[test]
+fn test_order_instrument_id_from_instrument_set() {
+    use std::collections::HashSet;
+    let tick_messages = Scenario::TickStreaming.generate_messages_with_seed(42);
+    let order_messages = Scenario::OrderEntry.generate_messages_with_seed(42);
+
+    // Collect instrument IDs from ticks
+    let tick_instruments: HashSet<u64> = tick_messages.iter()
+        .filter_map(|m| if let Message::Tick(t) = m { Some(t.instrument_id) } else { None })
+        .collect();
+
+    // All order instrument IDs must be in the same set
+    for msg in &order_messages[..1000] {
+        if let Message::Order(order) = msg {
+            assert!(
+                tick_instruments.contains(&order.instrument_id),
+                "Order instrument_id {} not in the 15-instrument set (Section V-D.4)",
+                order.instrument_id
+            );
+        }
+    }
+}
+
+/// Verify OrderBook large (S5) has 70–100 levels per side (Section V-D.1).
+#[test]
+fn test_order_book_large_level_range() {
+    let messages = Scenario::OrderBookLarge.generate_messages_with_seed(42);
+    for msg in &messages[..100] {
+        if let Message::OrderBook(book) = msg {
+            let bid_levels = book.bids.len();
+            let ask_levels = book.asks.len();
+            assert!(
+                (70..=100).contains(&bid_levels),
+                "OrderBook bids has {} levels, expected 70–100",
+                bid_levels
+            );
+            assert_eq!(bid_levels, ask_levels, "bids and asks should have equal depth");
+        }
+    }
+}
+

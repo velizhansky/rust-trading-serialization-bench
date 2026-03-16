@@ -159,9 +159,11 @@ impl EvaluationRunner {
         // Phase 1: Warmup — first WARMUP_MESSAGES messages
         self.warmup(protocol, &messages[..WARMUP_MESSAGES]);
 
-        // Phase 2: Throughput — immediately after warmup (per Section IV-A.3)
+        // Phase 2: Throughput — immediately after warmup (per Section IV-A.6).
+        // Uses only post-warmup messages to avoid re-measuring warmup data.
+        // Cycles through post-warmup slice to fill the 5-second window.
         let (throughput_msg_per_sec, throughput_bytes_per_sec) =
-            self.measure_throughput(protocol, &messages);
+            self.measure_throughput(protocol, &messages[WARMUP_MESSAGES..]);
 
         // Phase 3: Latency measurement — messages after warmup.
         // Three separate HDR histograms per Section IV-D.3.
@@ -247,28 +249,30 @@ impl EvaluationRunner {
         let mut total_bytes = 0usize;
         let mut total_messages = 0usize;
 
+        // Cycle through post-warmup messages to fill the 5-second window.
+        // Uses access_* (zero-copy for rkyv/FB) to match latency measurement semantics.
         while start.elapsed() < deadline {
             for message in messages {
                 let size = match message {
                     Message::Tick(tick) => {
                         let enc = self.encode_tick(protocol, tick);
                         let size = enc.len();
-                        let dec = self.decode_tick(protocol, &enc);
-                        black_box((enc, dec));
+                        let id = self.access_tick(protocol, &enc);
+                        black_box(id);
                         size
                     }
                     Message::Order(order) => {
                         let enc = self.encode_order(protocol, order);
                         let size = enc.len();
-                        let dec = self.decode_order(protocol, &enc);
-                        black_box((enc, dec));
+                        let id = self.access_order(protocol, &enc);
+                        black_box(id);
                         size
                     }
                     Message::OrderBook(book) => {
                         let enc = self.encode_order_book(protocol, book);
                         let size = enc.len();
-                        let dec = self.decode_order_book(protocol, &enc);
-                        black_box((enc, dec));
+                        let id = self.access_order_book(protocol, &enc);
+                        black_box(id);
                         size
                     }
                 };
@@ -288,19 +292,20 @@ impl EvaluationRunner {
         (msg_per_sec, bytes_per_sec)
     }
 
+    /// Benchmark a single Tick message: encode + access (decode for traditional,
+    /// zero-copy field traversal for rkyv/FlatBuffers — Section V-C, Table IV).
     fn bench_tick(&self, protocol: ProtocolType, tick: &Tick, iteration: usize) -> (Vec<u8>, std::time::Duration, std::time::Duration) {
         let start = Instant::now();
         let encoded = self.encode_tick(protocol, tick);
         let encode_time = start.elapsed();
 
         let start = Instant::now();
-        let decoded = self.decode_tick(protocol, &encoded);
+        let id = self.access_tick(protocol, &encoded);
         let decode_time = start.elapsed();
 
         if iteration % 1000 == 0 {
-            assert_eq!(tick.instrument_id, decoded.instrument_id);
+            assert_eq!(tick.instrument_id, id);
         }
-        black_box(&decoded);
         (encoded, encode_time, decode_time)
     }
 
@@ -310,13 +315,12 @@ impl EvaluationRunner {
         let encode_time = start.elapsed();
 
         let start = Instant::now();
-        let decoded = self.decode_order(protocol, &encoded);
+        let id = self.access_order(protocol, &encoded);
         let decode_time = start.elapsed();
 
         if iteration % 1000 == 0 {
-            assert_eq!(order.order_id, decoded.order_id);
+            assert_eq!(order.order_id, id);
         }
-        black_box(&decoded);
         (encoded, encode_time, decode_time)
     }
 
@@ -326,13 +330,12 @@ impl EvaluationRunner {
         let encode_time = start.elapsed();
 
         let start = Instant::now();
-        let decoded = self.decode_order_book(protocol, &encoded);
+        let id = self.access_order_book(protocol, &encoded);
         let decode_time = start.elapsed();
 
         if iteration % 1000 == 0 {
-            assert_eq!(book.instrument_id, decoded.instrument_id);
+            assert_eq!(book.instrument_id, id);
         }
-        black_box(&decoded);
         (encoded, encode_time, decode_time)
     }
 
@@ -393,6 +396,41 @@ impl EvaluationRunner {
             ProtocolType::Rkyv => protocols::rkyv::decode_order_book(bytes),
             ProtocolType::Protobuf => protocols::protobuf::decode_order_book(bytes),
             ProtocolType::FlatBuffers => protocols::flatbuffers::decode_order_book(bytes),
+        }
+    }
+
+    // --- Zero-copy access methods (Section V-C, Table IV) ---
+    // For traditional protocols (JSON, Bincode, Protobuf): full deserialization.
+    // For zero-copy protocols (rkyv, FlatBuffers): buffer validation + field traversal
+    // without allocating owned structures.
+
+    fn access_tick(&self, protocol: ProtocolType, bytes: &[u8]) -> u64 {
+        match protocol {
+            ProtocolType::Json => protocols::json::access_tick(bytes),
+            ProtocolType::Bincode => protocols::bincode::access_tick(bytes),
+            ProtocolType::Rkyv => protocols::rkyv::access_tick(bytes),
+            ProtocolType::Protobuf => protocols::protobuf::access_tick(bytes),
+            ProtocolType::FlatBuffers => protocols::flatbuffers::access_tick(bytes),
+        }
+    }
+
+    fn access_order(&self, protocol: ProtocolType, bytes: &[u8]) -> u64 {
+        match protocol {
+            ProtocolType::Json => protocols::json::access_order(bytes),
+            ProtocolType::Bincode => protocols::bincode::access_order(bytes),
+            ProtocolType::Rkyv => protocols::rkyv::access_order(bytes),
+            ProtocolType::Protobuf => protocols::protobuf::access_order(bytes),
+            ProtocolType::FlatBuffers => protocols::flatbuffers::access_order(bytes),
+        }
+    }
+
+    fn access_order_book(&self, protocol: ProtocolType, bytes: &[u8]) -> u64 {
+        match protocol {
+            ProtocolType::Json => protocols::json::access_order_book(bytes),
+            ProtocolType::Bincode => protocols::bincode::access_order_book(bytes),
+            ProtocolType::Rkyv => protocols::rkyv::access_order_book(bytes),
+            ProtocolType::Protobuf => protocols::protobuf::access_order_book(bytes),
+            ProtocolType::FlatBuffers => protocols::flatbuffers::access_order_book(bytes),
         }
     }
 

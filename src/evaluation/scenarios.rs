@@ -24,11 +24,11 @@ const BASE_PRICES: &[i64] = &[
     100000, 500000, 1000000, 3000000, 20000000,
 ];
 
-// 20 ticker symbols: crypto (5), equities (11), FX (4). Lengths 1–6 chars.
+// 20 ticker symbols: crypto (5), equities (11), FX (4). Lengths 3–6 chars (Section V-D.4).
 const SYMBOLS: &[&str] = &[
     "BTCUSD", "ETHUSD", "SOLUSD", "ADAUSD", "DOTUSD",
     "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA",
-    "JPM", "BAC", "GS", "MS", "C",
+    "JPM", "BAC", "GSPC", "MSTR", "COIN",
     "EURUSD", "GBPUSD", "USDJPY", "AUDUSD",
 ];
 
@@ -167,6 +167,7 @@ fn generate_tick(rng: &mut StdRng, seq_num: u64, base_ts: u64) -> Tick {
 /// 9 fields, 60–70 bytes logical: includes 2 variable-length strings
 /// (symbol 3–6 chars, client_order_id 15–22 chars).
 fn generate_order(rng: &mut StdRng, order_id: u64, base_ts: u64) -> Order {
+    let instrument_idx = rng.random_range(0..INSTRUMENTS.len()); // same 15 instruments as Tick/OB
     let symbol_idx = rng.random_range(0..SYMBOLS.len());
     let price_idx = rng.random_range(0..BASE_PRICES.len());
     let price_variance = rng.random_range(-10000..10000);
@@ -176,13 +177,18 @@ fn generate_order(rng: &mut StdRng, order_id: u64, base_ts: u64) -> Order {
     let side = if rng.random_bool(1.0 - BUY_PROBABILITY) { Side::Buy } else { Side::Sell };
     let order_type = if rng.random_bool(LIMIT_ORDER_PROBABILITY) { OrderType::Limit } else { OrderType::Market };
     let ts_jitter = rng.random_range(0..20000);
-    let instrument_id = 100000 + rng.random_range(1..100);
+
+    // client_order_id: 15–22 chars (Section V-D.4).
+    // Format: "CLO" (3) + 8-digit id + "_" + 3–10 digit suffix = 15–22 chars.
+    let id_part = rng.random_range(10000000u64..99999999);
+    let suffix_len = rng.random_range(3usize..=10);
+    let suffix_val: u64 = rng.random_range(0..10u64.pow(suffix_len as u32));
 
     Order {
-        instrument_id,
+        instrument_id: INSTRUMENTS[instrument_idx],
         symbol: SYMBOLS[symbol_idx].to_string(),
         order_id,
-        client_order_id: format!("CL{:010}_{}", rng.random_range(1000000..9999999), order_id % 1000),
+        client_order_id: format!("CLO{:08}_{:0>width$}", id_part, suffix_val, width = suffix_len),
         client_ts_ns: base_ts + (order_id * 2000) + ts_jitter,
         side,
         order_type,

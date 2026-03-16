@@ -255,3 +255,81 @@ fn test_order_book_flatbuffers_roundtrip() {
     assert_eq!(book, book_back);
 }
 
+// --- Zero-copy access guard tests ---
+// Verify that access_* functions return correct IDs without materializing
+// owned structures (Section V-C, Table IV).
+
+#[test]
+fn test_rkyv_zero_copy_access_tick() {
+    let tick = Tick {
+        instrument_id: 42,
+        exchange_ts_ns: 100,
+        ingest_ts_ns: 200,
+        seq_num: 1,
+        price: 10000,
+        quantity: 100,
+        side: Side::Buy,
+        trade_id: 12345,
+    };
+    let bytes = protocols::rkyv::encode_tick(&tick);
+    let id = protocols::rkyv::access_tick(&bytes);
+    assert_eq!(id, 42, "rkyv access_tick should return correct instrument_id");
+}
+
+#[test]
+fn test_flatbuffers_zero_copy_access_tick() {
+    let tick = Tick {
+        instrument_id: 42,
+        exchange_ts_ns: 100,
+        ingest_ts_ns: 200,
+        seq_num: 1,
+        price: 10000,
+        quantity: 100,
+        side: Side::Buy,
+        trade_id: 12345,
+    };
+    let bytes = protocols::flatbuffers::encode_tick(&tick);
+    let id = protocols::flatbuffers::access_tick(&bytes);
+    assert_eq!(id, 42, "flatbuffers access_tick should return correct instrument_id");
+}
+
+#[test]
+fn test_rkyv_zero_copy_access_order_book() {
+    let book = OrderBook {
+        instrument_id: 99,
+        exchange_ts_ns: 1000,
+        ingest_ts_ns: 2000,
+        seq_num: 1,
+        bids: vec![
+            PriceLevel { price: 50000, quantity: 10 },
+            PriceLevel { price: 49990, quantity: 20 },
+        ],
+        asks: vec![
+            PriceLevel { price: 50010, quantity: 15 },
+        ],
+    };
+    let bytes = protocols::rkyv::encode_order_book(&book);
+    let id = protocols::rkyv::access_order_book(&bytes);
+    assert_eq!(id, 99, "rkyv access_order_book should return correct instrument_id");
+}
+
+#[test]
+fn test_flatbuffers_zero_copy_access_order_book() {
+    let book = OrderBook {
+        instrument_id: 99,
+        exchange_ts_ns: 1000,
+        ingest_ts_ns: 2000,
+        seq_num: 1,
+        bids: vec![
+            PriceLevel { price: 50000, quantity: 10 },
+            PriceLevel { price: 49990, quantity: 20 },
+        ],
+        asks: vec![
+            PriceLevel { price: 50010, quantity: 15 },
+        ],
+    };
+    let bytes = protocols::flatbuffers::encode_order_book(&book);
+    let id = protocols::flatbuffers::access_order_book(&bytes);
+    assert_eq!(id, 99, "flatbuffers access_order_book should return correct instrument_id");
+}
+
