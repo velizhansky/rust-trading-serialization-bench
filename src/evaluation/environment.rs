@@ -123,7 +123,9 @@ pub fn check_environment() -> Vec<String> {
 // --- Helper functions (all best-effort, return "unknown" on failure) ---
 
 fn read_file_trimmed(path: &str) -> Option<String> {
-    std::fs::read_to_string(path).ok().map(|s| s.trim().to_string())
+    std::fs::read_to_string(path)
+        .ok()
+        .map(|s| s.trim().to_string())
 }
 
 fn run_command(program: &str, args: &[&str]) -> Option<String> {
@@ -133,7 +135,9 @@ fn run_command(program: &str, args: &[&str]) -> Option<String> {
         .ok()
         .and_then(|o| {
             if o.status.success() {
-                String::from_utf8(o.stdout).ok().map(|s| s.trim().to_string())
+                String::from_utf8(o.stdout)
+                    .ok()
+                    .map(|s| s.trim().to_string())
             } else {
                 None
             }
@@ -145,9 +149,10 @@ fn read_cpu_model() -> String {
     if let Some(cpuinfo) = read_file_trimmed("/proc/cpuinfo") {
         for line in cpuinfo.lines() {
             if line.starts_with("model name")
-                && let Some(val) = line.split(':').nth(1) {
-                    return val.trim().to_string();
-                }
+                && let Some(val) = line.split(':').nth(1)
+            {
+                return val.trim().to_string();
+            }
         }
     }
     // macOS: sysctl
@@ -166,9 +171,10 @@ fn read_cpu_cores() -> usize {
                     phys_id = val.trim().to_string();
                 }
             } else if line.starts_with("core id")
-                && let Some(val) = line.split(':').nth(1) {
-                    cores.insert(format!("{}:{}", phys_id, val.trim()));
-                }
+                && let Some(val) = line.split(':').nth(1)
+            {
+                cores.insert(format!("{}:{}", phys_id, val.trim()));
+            }
         }
         if !cores.is_empty() {
             return cores.len();
@@ -183,7 +189,10 @@ fn read_cpu_cores() -> usize {
 fn read_cpu_threads() -> usize {
     // Linux
     if let Some(cpuinfo) = read_file_trimmed("/proc/cpuinfo") {
-        let count = cpuinfo.lines().filter(|l| l.starts_with("processor")).count();
+        let count = cpuinfo
+            .lines()
+            .filter(|l| l.starts_with("processor"))
+            .count();
         if count > 0 {
             return count;
         }
@@ -247,9 +256,10 @@ fn read_memory_total_mb() -> u64 {
             if line.starts_with("MemTotal:") {
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if parts.len() >= 2
-                    && let Ok(kb) = parts[1].parse::<u64>() {
-                        return kb / 1024;
-                    }
+                    && let Ok(kb) = parts[1].parse::<u64>()
+                {
+                    return kb / 1024;
+                }
             }
         }
     }
@@ -311,10 +321,10 @@ fn read_turbo_boost() -> String {
 
 fn read_cpu_current_freq_mhz() -> String {
     // Linux: current CPU frequency from cpufreq
-    if let Some(khz) = read_file_trimmed("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq") {
-        if let Ok(khz_val) = khz.parse::<u64>() {
-            return format!("{}", khz_val / 1000);
-        }
+    if let Some(khz) = read_file_trimmed("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq")
+        && let Ok(khz_val) = khz.parse::<u64>()
+    {
+        return format!("{}", khz_val / 1000);
     }
     // macOS: sysctl hw.cpufrequency (base frequency in Hz)
     run_command("sysctl", &["-n", "hw.cpufrequency"])
@@ -339,8 +349,9 @@ fn measure_timer_resolution() -> u64 {
 fn read_hostname() -> String {
     // Try /etc/hostname first (Linux)
     if let Some(h) = read_file_trimmed("/etc/hostname")
-        && !h.is_empty() {
-            return h;
-        }
+        && !h.is_empty()
+    {
+        return h;
+    }
     run_command("hostname", &[]).unwrap_or_else(|| "unknown".to_string())
 }

@@ -9,19 +9,19 @@
 //! combination. The shell orchestrator (scripts/run_experiment.sh) restarts the
 //! process between runs for clean allocator state (Section IV-C.1).
 
-use crate::evaluation::metrics::{LatencyRecorder, SizeRecorder, ProtocolMetrics, RunResult};
-use crate::evaluation::scenarios::{Scenario, Message};
-use crate::messages::{Tick, Order, OrderBook};
+use crate::evaluation::metrics::{LatencyRecorder, ProtocolMetrics, RunResult, SizeRecorder};
+use crate::evaluation::scenarios::{Message, Scenario};
+use crate::messages::{Order, OrderBook, Tick};
 use crate::protocols;
-use std::time::{Duration, Instant};
 use std::hint::black_box;
+use std::time::{Duration, Instant};
 
 /// Warmup iterations excluded from measurement (Section IV-C.2).
 /// Pilot experiments confirmed stabilization within first 5,000 iterations.
 const WARMUP_MESSAGES: usize = 5_000;
 
 /// Throughput measurement window in seconds (Section IV-A.6).
-/// Guarantees ≥500K operations even for slowest protocol configurations.
+/// Single forward pass; corpus may be exhausted before deadline for small scenarios.
 const THROUGHPUT_DURATION_SECS: u64 = 5;
 
 pub struct EvaluationConfig {
@@ -103,7 +103,11 @@ impl EvaluationRunner {
             println!("{}", "=".repeat(60));
 
             for protocol in &self.config.protocols {
-                println!("\nEvaluating {} with {}...", protocol.name(), scenario.name());
+                println!(
+                    "\nEvaluating {} with {}...",
+                    protocol.name(),
+                    scenario.name()
+                );
 
                 let run_result = self.evaluate_single_run(*protocol, scenario, 42, 0);
 
@@ -162,8 +166,12 @@ impl EvaluationRunner {
         // Phase 2: Throughput — immediately after warmup (per Section IV-A.6).
         // Single forward pass over post-warmup messages, no wrap-around.
         let post_warmup = &messages[WARMUP_MESSAGES..];
-        let (throughput_msg_per_sec, throughput_bytes_per_sec, throughput_corpus_exhausted, throughput_processed) =
-            self.measure_throughput(protocol, post_warmup);
+        let (
+            throughput_msg_per_sec,
+            throughput_bytes_per_sec,
+            throughput_corpus_exhausted,
+            throughput_processed,
+        ) = self.measure_throughput(protocol, post_warmup);
         debug_assert!(
             throughput_processed <= post_warmup.len(),
             "throughput processed {} messages but corpus has only {}",
@@ -189,9 +197,8 @@ impl EvaluationRunner {
 
             encode_latency.record(encode_time);
             decode_latency.record(decode_time);
-            roundtrip_latency.record_nanos(
-                encode_time.as_nanos() as u64 + decode_time.as_nanos() as u64,
-            );
+            roundtrip_latency
+                .record_nanos(encode_time.as_nanos() as u64 + decode_time.as_nanos() as u64);
             size_recorder.record(encoded.len());
         }
 
@@ -276,7 +283,11 @@ impl EvaluationRunner {
     /// The field `throughput_corpus_exhausted` in `RunResult` records whether
     /// the corpus was fully consumed before the 5-second window elapsed.
     /// Returns (msg_per_sec, bytes_per_sec, corpus_exhausted, processed_messages).
-    fn measure_throughput(&self, protocol: ProtocolType, messages: &[Message]) -> (f64, f64, bool, usize) {
+    fn measure_throughput(
+        &self,
+        protocol: ProtocolType,
+        messages: &[Message],
+    ) -> (f64, f64, bool, usize) {
         if messages.is_empty() {
             return (0.0, 0.0, true, 0);
         }
@@ -320,7 +331,8 @@ impl EvaluationRunner {
             total_messages += 1;
         }
 
-        let elapsed_secs = start.elapsed().as_secs_f64();
+        let elapsed = start.elapsed();
+        let elapsed_secs = elapsed.as_secs_f64().max(f64::EPSILON);
         let corpus_exhausted = total_messages == messages.len();
         let msg_per_sec = total_messages as f64 / elapsed_secs;
         let bytes_per_sec = total_bytes as f64 / elapsed_secs;
@@ -330,7 +342,12 @@ impl EvaluationRunner {
 
     /// Benchmark a single Tick message: encode + access (decode for traditional,
     /// zero-copy field traversal for rkyv/FlatBuffers — Section V-C, Table IV).
-    fn bench_tick(&self, protocol: ProtocolType, tick: &Tick, iteration: usize) -> (Vec<u8>, std::time::Duration, std::time::Duration) {
+    fn bench_tick(
+        &self,
+        protocol: ProtocolType,
+        tick: &Tick,
+        iteration: usize,
+    ) -> (Vec<u8>, std::time::Duration, std::time::Duration) {
         let start = Instant::now();
         let encoded = self.encode_tick(protocol, tick);
         let encode_time = start.elapsed();
@@ -345,7 +362,12 @@ impl EvaluationRunner {
         (encoded, encode_time, decode_time)
     }
 
-    fn bench_order(&self, protocol: ProtocolType, order: &Order, iteration: usize) -> (Vec<u8>, std::time::Duration, std::time::Duration) {
+    fn bench_order(
+        &self,
+        protocol: ProtocolType,
+        order: &Order,
+        iteration: usize,
+    ) -> (Vec<u8>, std::time::Duration, std::time::Duration) {
         let start = Instant::now();
         let encoded = self.encode_order(protocol, order);
         let encode_time = start.elapsed();
@@ -360,7 +382,12 @@ impl EvaluationRunner {
         (encoded, encode_time, decode_time)
     }
 
-    fn bench_order_book(&self, protocol: ProtocolType, book: &OrderBook, iteration: usize) -> (Vec<u8>, std::time::Duration, std::time::Duration) {
+    fn bench_order_book(
+        &self,
+        protocol: ProtocolType,
+        book: &OrderBook,
+        iteration: usize,
+    ) -> (Vec<u8>, std::time::Duration, std::time::Duration) {
         let start = Instant::now();
         let encoded = self.encode_order_book(protocol, book);
         let encode_time = start.elapsed();
@@ -477,10 +504,10 @@ impl EvaluationRunner {
     ) {
         for metrics in all_metrics.iter_mut() {
             if let Some(baseline) = baseline_metrics.get(&metrics.scenario_name) {
-                let encode_amp = metrics.encode_latency.p99_ns as f64
-                    / baseline.encode_latency.p99_ns as f64;
-                let decode_amp = metrics.decode_latency.p99_ns as f64
-                    / baseline.decode_latency.p99_ns as f64;
+                let encode_amp =
+                    metrics.encode_latency.p99_ns as f64 / baseline.encode_latency.p99_ns as f64;
+                let decode_amp =
+                    metrics.decode_latency.p99_ns as f64 / baseline.decode_latency.p99_ns as f64;
 
                 metrics.encode_latency_amplification = Some(encode_amp);
                 metrics.decode_latency_amplification = Some(decode_amp);

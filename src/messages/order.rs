@@ -1,9 +1,10 @@
-use super::{Side, OrderType};
-use serde::{Deserialize, Serialize};
+use super::{OrderType, Side};
 use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq)]
-#[derive(Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize,
+)]
 pub struct Order {
     pub instrument_id: u64,
     pub symbol: String,

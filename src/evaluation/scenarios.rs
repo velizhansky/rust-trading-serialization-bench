@@ -5,31 +5,27 @@
 //! 30 distinct but reproducible replications per (protocol, scenario) pair
 //! (Section IV-C.1).
 
-use crate::messages::{Tick, Order, OrderBook, PriceLevel, Side, OrderType};
-use rand::{Rng, SeedableRng};
+use crate::messages::{Order, OrderBook, OrderType, PriceLevel, Side, Tick};
 use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 
 // --- Generation parameters (Section V-D.4) ---
 // 15 numeric instrument IDs spanning 3 asset-class prefixes.
 const INSTRUMENTS: &[u64] = &[
-    100001, 100002, 100003, 100004, 100005,
-    200001, 200002, 200003, 200004, 200005,
-    300001, 300002, 300003, 300004, 300005,
+    100001, 100002, 100003, 100004, 100005, 200001, 200002, 200003, 200004, 200005, 300001, 300002,
+    300003, 300004, 300005,
 ];
 
 // 10 base prices in fixed-point units spanning 4 orders of magnitude
 // (100K–50M), exercising variable-length integer encoding (e.g. Protobuf varint).
 const BASE_PRICES: &[i64] = &[
-    5000000, 10000000, 15000000, 25000000, 50000000,
-    100000, 500000, 1000000, 3000000, 20000000,
+    5000000, 10000000, 15000000, 25000000, 50000000, 100000, 500000, 1000000, 3000000, 20000000,
 ];
 
 // 20 ticker symbols: crypto (5), equities (11), FX (4). Lengths 3–6 chars (Section V-D.4).
 const SYMBOLS: &[&str] = &[
-    "BTCUSD", "ETHUSD", "SOLUSD", "ADAUSD", "DOTUSD",
-    "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA",
-    "JPM", "BAC", "GSPC", "MSTR", "COIN",
-    "EURUSD", "GBPUSD", "USDJPY", "AUDUSD",
+    "BTCUSD", "ETHUSD", "SOLUSD", "ADAUSD", "DOTUSD", "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA",
+    "NVDA", "JPM", "BAC", "GSPC", "MSTR", "COIN", "EURUSD", "GBPUSD", "USDJPY", "AUDUSD",
 ];
 
 // Jan 1 2024 00:00:00 UTC in nanoseconds — anchor for generated timestamps.
@@ -115,7 +111,9 @@ impl Scenario {
             Scenario::OrderBookSmall => "Typical order book snapshot",
             Scenario::OrderBookMedium => "Liquid instrument order book",
             Scenario::OrderBookLarge => "Deep market order book",
-            Scenario::MixedWorkload => "Realistic trading session (70% ticks, 20% orders, 7% small books, 2% medium books, 1% large books)",
+            Scenario::MixedWorkload => {
+                "Realistic trading session (70% ticks, 20% orders, 7% small books, 2% medium books, 1% large books)"
+            }
             Scenario::BurstTraffic => "Peak load during market events",
         }
     }
@@ -140,9 +138,15 @@ impl Scenario {
         match self {
             Scenario::TickStreaming => generate_ticks_high_entropy(self.sample_count(), seed),
             Scenario::OrderEntry => generate_orders_high_entropy(self.sample_count(), seed),
-            Scenario::OrderBookSmall => generate_order_books_high_entropy(self.sample_count(), 5, seed),
-            Scenario::OrderBookMedium => generate_order_books_high_entropy(self.sample_count(), 20, seed),
-            Scenario::OrderBookLarge => generate_order_books_high_entropy(self.sample_count(), 100, seed),
+            Scenario::OrderBookSmall => {
+                generate_order_books_high_entropy(self.sample_count(), 5, seed)
+            }
+            Scenario::OrderBookMedium => {
+                generate_order_books_high_entropy(self.sample_count(), 20, seed)
+            }
+            Scenario::OrderBookLarge => {
+                generate_order_books_high_entropy(self.sample_count(), 100, seed)
+            }
             Scenario::MixedWorkload => generate_mixed_workload(self.sample_count(), seed),
             Scenario::BurstTraffic => generate_burst_traffic(self.sample_count(), seed),
         }
@@ -154,10 +158,14 @@ impl Scenario {
 fn generate_tick(rng: &mut StdRng, seq_num: u64, base_ts: u64) -> Tick {
     let instrument_idx = rng.random_range(0..INSTRUMENTS.len());
     let price_idx = rng.random_range(0..BASE_PRICES.len());
-    let price_variance = rng.random_range(-5000..=5000);   // ±5K tick units (Section V-D.1)
-    let quantity_base = rng.random_range(1000..100000);    // range 1K–110K
-    let side = if rng.random_bool(TICK_BUY_PROBABILITY) { Side::Buy } else { Side::Sell };
-    let ts_jitter = rng.random_range(0..=10000);           // 0–10μs jitter (Section V-D.3)
+    let price_variance = rng.random_range(-5000..=5000); // ±5K tick units (Section V-D.1)
+    let quantity_base = rng.random_range(1000..100000); // range 1K–110K
+    let side = if rng.random_bool(TICK_BUY_PROBABILITY) {
+        Side::Buy
+    } else {
+        Side::Sell
+    };
+    let ts_jitter = rng.random_range(0..=10000); // 0–10μs jitter (Section V-D.3)
 
     Tick {
         instrument_id: INSTRUMENTS[instrument_idx],
@@ -180,8 +188,16 @@ fn generate_order(rng: &mut StdRng, order_id: u64, base_ts: u64) -> Order {
     let price_idx = rng.random_range(0..BASE_PRICES.len());
     let price_variance = rng.random_range(-10000..=10000);
     let quantity_base = rng.random_range(1000..50000);
-    let side = if rng.random_bool(ORDER_BUY_PROBABILITY) { Side::Buy } else { Side::Sell };
-    let order_type = if rng.random_bool(LIMIT_ORDER_PROBABILITY) { OrderType::Limit } else { OrderType::Market };
+    let side = if rng.random_bool(ORDER_BUY_PROBABILITY) {
+        Side::Buy
+    } else {
+        Side::Sell
+    };
+    let order_type = if rng.random_bool(LIMIT_ORDER_PROBABILITY) {
+        OrderType::Limit
+    } else {
+        OrderType::Market
+    };
     let ts_jitter = rng.random_range(0..=20000);
 
     // client_order_id: 15–22 chars (Section V-D.4).
@@ -194,7 +210,12 @@ fn generate_order(rng: &mut StdRng, order_id: u64, base_ts: u64) -> Order {
         instrument_id: INSTRUMENTS[instrument_idx],
         symbol: SYMBOLS[symbol_idx].to_string(),
         order_id,
-        client_order_id: format!("CLO{:08}_{:0>width$}", id_part, suffix_val, width = suffix_len),
+        client_order_id: format!(
+            "CLO{:08}_{:0>width$}",
+            id_part,
+            suffix_val,
+            width = suffix_len
+        ),
         client_ts_ns: base_ts + (order_id * 2000) + ts_jitter,
         side,
         order_type,
@@ -254,7 +275,11 @@ fn generate_ticks_high_entropy(count: usize, seed: u64) -> Vec<Message> {
     let mut messages = Vec::with_capacity(count);
 
     for i in 0..count {
-        messages.push(Message::Tick(generate_tick(&mut rng, i as u64, BASE_TIMESTAMP)));
+        messages.push(Message::Tick(generate_tick(
+            &mut rng,
+            i as u64,
+            BASE_TIMESTAMP,
+        )));
     }
 
     messages
@@ -265,7 +290,11 @@ fn generate_orders_high_entropy(count: usize, seed: u64) -> Vec<Message> {
     let mut messages = Vec::with_capacity(count);
 
     for i in 0..count {
-        messages.push(Message::Order(generate_order(&mut rng, 1000000 + i as u64, BASE_TIMESTAMP)));
+        messages.push(Message::Order(generate_order(
+            &mut rng,
+            1000000 + i as u64,
+            BASE_TIMESTAMP,
+        )));
     }
 
     messages
@@ -276,7 +305,12 @@ fn generate_order_books_high_entropy(count: usize, levels: usize, seed: u64) -> 
     let mut messages = Vec::with_capacity(count);
 
     for i in 0..count {
-        messages.push(Message::OrderBook(generate_order_book(&mut rng, i as u64, levels, BASE_TIMESTAMP)));
+        messages.push(Message::OrderBook(generate_order_book(
+            &mut rng,
+            i as u64,
+            levels,
+            BASE_TIMESTAMP,
+        )));
     }
 
     messages
@@ -294,7 +328,9 @@ fn generate_mixed_message(rng: &mut StdRng, idx: usize, base_ts: u64) -> Message
         Message::Order(generate_order(rng, 1000000 + idx as u64, base_ts))
     } else if selector < MIXED_TICK_RATIO + MIXED_ORDER_RATIO + MIXED_BOOK_SMALL_RATIO {
         Message::OrderBook(generate_order_book(rng, idx as u64, 5, base_ts))
-    } else if selector < MIXED_TICK_RATIO + MIXED_ORDER_RATIO + MIXED_BOOK_SMALL_RATIO + MIXED_BOOK_MEDIUM_RATIO {
+    } else if selector
+        < MIXED_TICK_RATIO + MIXED_ORDER_RATIO + MIXED_BOOK_SMALL_RATIO + MIXED_BOOK_MEDIUM_RATIO
+    {
         Message::OrderBook(generate_order_book(rng, idx as u64, 20, base_ts))
     } else {
         Message::OrderBook(generate_order_book(rng, idx as u64, 100, base_ts))
@@ -326,7 +362,11 @@ fn generate_burst_traffic(count: usize, seed: u64) -> Vec<Message> {
 
     // Burst phase: 100% ticks (market volatility event)
     for i in 0..burst_size {
-        messages.push(Message::Tick(generate_tick(&mut rng, (normal_size + i) as u64, BASE_TIMESTAMP)));
+        messages.push(Message::Tick(generate_tick(
+            &mut rng,
+            (normal_size + i) as u64,
+            BASE_TIMESTAMP,
+        )));
     }
 
     messages

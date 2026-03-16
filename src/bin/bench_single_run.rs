@@ -8,7 +8,7 @@
 //! Exit codes: 0 = success, 1 = invalid arguments, 2 = benchmark error.
 
 use rust_trading_serialization_bench::evaluation::environment::{
-    capture_environment, check_environment, EnvironmentInfo,
+    EnvironmentInfo, capture_environment, check_environment,
 };
 use rust_trading_serialization_bench::evaluation::metrics::RunResult;
 use rust_trading_serialization_bench::evaluation::runner::{
@@ -96,11 +96,7 @@ fn parse_args() -> Result<Args, String> {
             }
             "--output-dir" => {
                 i += 1;
-                output_dir = Some(
-                    args.get(i)
-                        .ok_or("--output-dir requires a value")?
-                        .clone(),
-                );
+                output_dir = Some(args.get(i).ok_or("--output-dir requires a value")?.clone());
             }
             "--quiet" => {
                 quiet = true;
@@ -160,12 +156,8 @@ fn main() {
     };
     let runner = EvaluationRunner::new(config);
 
-    let result = runner.evaluate_single_run(
-        args.protocol,
-        &args.scenario,
-        args.seed,
-        args.run_index,
-    );
+    let result =
+        runner.evaluate_single_run(args.protocol, &args.scenario, args.seed, args.run_index);
 
     // Ensure output directory exists
     let output_dir = Path::new(&args.output_dir);

@@ -1,7 +1,7 @@
 //! Protobuf serialization via prost, using types generated from
 //! schemas/trading.proto at compile time (Section V-C, Table IV).
 
-use crate::messages::{Tick, Order, OrderBook, Side, OrderType};
+use crate::messages::{Order, OrderBook, OrderType, Side, Tick};
 use prost::Message;
 
 /// Generated Protobuf types from schemas/trading.proto via prost-build.
@@ -109,14 +109,22 @@ pub fn encode_order_book(book: &OrderBook) -> Vec<u8> {
         exchange_ts_ns: book.exchange_ts_ns,
         ingest_ts_ns: book.ingest_ts_ns,
         seq_num: book.seq_num,
-        bids: book.bids.iter().map(|level| proto::PriceLevel {
-            price: level.price,
-            quantity: level.quantity,
-        }).collect(),
-        asks: book.asks.iter().map(|level| proto::PriceLevel {
-            price: level.price,
-            quantity: level.quantity,
-        }).collect(),
+        bids: book
+            .bids
+            .iter()
+            .map(|level| proto::PriceLevel {
+                price: level.price,
+                quantity: level.quantity,
+            })
+            .collect(),
+        asks: book
+            .asks
+            .iter()
+            .map(|level| proto::PriceLevel {
+                price: level.price,
+                quantity: level.quantity,
+            })
+            .collect(),
     };
     proto.encode_to_vec()
 }
@@ -128,14 +136,22 @@ pub fn decode_order_book(bytes: &[u8]) -> OrderBook {
         exchange_ts_ns: proto.exchange_ts_ns,
         ingest_ts_ns: proto.ingest_ts_ns,
         seq_num: proto.seq_num,
-        bids: proto.bids.iter().map(|level| crate::messages::PriceLevel {
-            price: level.price,
-            quantity: level.quantity,
-        }).collect(),
-        asks: proto.asks.iter().map(|level| crate::messages::PriceLevel {
-            price: level.price,
-            quantity: level.quantity,
-        }).collect(),
+        bids: proto
+            .bids
+            .iter()
+            .map(|level| crate::messages::PriceLevel {
+                price: level.price,
+                quantity: level.quantity,
+            })
+            .collect(),
+        asks: proto
+            .asks
+            .iter()
+            .map(|level| crate::messages::PriceLevel {
+                price: level.price,
+                quantity: level.quantity,
+            })
+            .collect(),
     }
 }
 

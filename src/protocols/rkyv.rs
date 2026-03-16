@@ -1,4 +1,4 @@
-use crate::messages::{Tick, Order, OrderBook};
+use crate::messages::{Order, OrderBook, Tick};
 use rkyv::rancor::Error as RkyvError;
 use std::hint::black_box;
 
@@ -10,16 +10,15 @@ pub fn encode_tick(tick: &Tick) -> Vec<u8> {
 
 /// Traditional decode: materializes owned Tick. Used for correctness checks.
 pub fn decode_tick(bytes: &[u8]) -> Tick {
-    rkyv::from_bytes::<Tick, RkyvError>(bytes)
-        .expect("rkyv decode tick")
+    rkyv::from_bytes::<Tick, RkyvError>(bytes).expect("rkyv decode tick")
 }
 
 /// Zero-copy access: validates buffer and traverses all fields via archived
 /// view without allocating an owned Tick (Section V-C, Table IV: zero-copy access model).
 /// Returns instrument_id for optional correctness spot-checks.
 pub fn access_tick(bytes: &[u8]) -> u64 {
-    let archived = rkyv::access::<rkyv::Archived<Tick>, RkyvError>(bytes)
-        .expect("rkyv access tick");
+    let archived =
+        rkyv::access::<rkyv::Archived<Tick>, RkyvError>(bytes).expect("rkyv access tick");
     black_box(archived.instrument_id);
     black_box(archived.exchange_ts_ns);
     black_box(archived.ingest_ts_ns);
@@ -38,15 +37,14 @@ pub fn encode_order(order: &Order) -> Vec<u8> {
 }
 
 pub fn decode_order(bytes: &[u8]) -> Order {
-    rkyv::from_bytes::<Order, RkyvError>(bytes)
-        .expect("rkyv decode order")
+    rkyv::from_bytes::<Order, RkyvError>(bytes).expect("rkyv decode order")
 }
 
 /// Zero-copy access for Order: traverses all fields including variable-length
 /// strings via archived references (no String allocation).
 pub fn access_order(bytes: &[u8]) -> u64 {
-    let archived = rkyv::access::<rkyv::Archived<Order>, RkyvError>(bytes)
-        .expect("rkyv access order");
+    let archived =
+        rkyv::access::<rkyv::Archived<Order>, RkyvError>(bytes).expect("rkyv access order");
     black_box(archived.instrument_id);
     black_box(archived.symbol.as_str());
     black_box(archived.order_id);
@@ -66,8 +64,7 @@ pub fn encode_order_book(book: &OrderBook) -> Vec<u8> {
 }
 
 pub fn decode_order_book(bytes: &[u8]) -> OrderBook {
-    rkyv::from_bytes::<OrderBook, RkyvError>(bytes)
-        .expect("rkyv decode order_book")
+    rkyv::from_bytes::<OrderBook, RkyvError>(bytes).expect("rkyv decode order_book")
 }
 
 /// Zero-copy access for OrderBook: traverses header fields and iterates

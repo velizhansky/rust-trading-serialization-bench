@@ -1,15 +1,15 @@
 use rust_trading_serialization_bench::evaluation::scenarios::{
-    Scenario, Message, all_scenarios,
-    MIXED_TICK_RATIO, MIXED_ORDER_RATIO, MIXED_BOOK_SMALL_RATIO, MIXED_BOOK_MEDIUM_RATIO,
+    MIXED_BOOK_MEDIUM_RATIO, MIXED_BOOK_SMALL_RATIO, MIXED_ORDER_RATIO, MIXED_TICK_RATIO, Message,
+    Scenario, all_scenarios,
 };
 
 #[test]
 fn test_deterministic_generation() {
     let messages1 = Scenario::TickStreaming.generate_messages();
     let messages2 = Scenario::TickStreaming.generate_messages();
-    
+
     assert_eq!(messages1.len(), messages2.len());
-    
+
     for (m1, m2) in messages1.iter().zip(messages2.iter()) {
         match (m1, m2) {
             (Message::Tick(t1), Message::Tick(t2)) => {
@@ -17,7 +17,7 @@ fn test_deterministic_generation() {
                 assert_eq!(t1.price, t2.price);
                 assert_eq!(t1.quantity, t2.quantity);
                 assert_eq!(t1.side, t2.side);
-            },
+            }
             _ => panic!("Message type mismatch"),
         }
     }
@@ -26,11 +26,11 @@ fn test_deterministic_generation() {
 #[test]
 fn test_sample_counts() {
     let scenarios = all_scenarios();
-    
+
     for scenario in scenarios {
         let expected_count = scenario.sample_count();
         let messages = scenario.generate_messages();
-        
+
         assert_eq!(
             messages.len(),
             expected_count,
@@ -45,13 +45,13 @@ fn test_sample_counts() {
 fn test_mixed_workload_distribution() {
     let messages = Scenario::MixedWorkload.generate_messages();
     let total = messages.len() as f64;
-    
+
     let mut tick_count = 0;
     let mut order_count = 0;
     let mut book_small_count = 0;
     let mut book_medium_count = 0;
     let mut book_large_count = 0;
-    
+
     for msg in messages {
         match msg {
             Message::Tick(_) => tick_count += 1,
@@ -65,44 +65,44 @@ fn test_mixed_workload_distribution() {
                 } else {
                     book_large_count += 1;
                 }
-            },
+            }
         }
     }
-    
+
     let tick_ratio = tick_count as f64 / total;
     let order_ratio = order_count as f64 / total;
     let book_small_ratio = book_small_count as f64 / total;
     let book_medium_ratio = book_medium_count as f64 / total;
     let book_large_ratio = book_large_count as f64 / total;
-    
+
     assert!(
         (tick_ratio - MIXED_TICK_RATIO).abs() < 0.05,
         "Tick ratio {:.2} should be close to {:.2}",
         tick_ratio,
         MIXED_TICK_RATIO
     );
-    
+
     assert!(
         (order_ratio - MIXED_ORDER_RATIO).abs() < 0.05,
         "Order ratio {:.2} should be close to {:.2}",
         order_ratio,
         MIXED_ORDER_RATIO
     );
-    
+
     assert!(
         (book_small_ratio - MIXED_BOOK_SMALL_RATIO).abs() < 0.02,
         "Small book ratio {:.2} should be close to {:.2}",
         book_small_ratio,
         MIXED_BOOK_SMALL_RATIO
     );
-    
+
     assert!(
         (book_medium_ratio - MIXED_BOOK_MEDIUM_RATIO).abs() < 0.01,
         "Medium book ratio {:.2} should be close to {:.2}",
         book_medium_ratio,
         MIXED_BOOK_MEDIUM_RATIO
     );
-    
+
     assert!(
         book_large_ratio < 0.02,
         "Large book ratio {:.2} should be less than 0.02",
@@ -220,7 +220,8 @@ fn test_order_symbol_length_range() {
             assert!(
                 (3..=6).contains(&len),
                 "Symbol '{}' has length {}, expected 3–6 (Section V-D.4)",
-                order.symbol, len
+                order.symbol,
+                len
             );
         }
     }
@@ -236,7 +237,8 @@ fn test_order_client_order_id_length_range() {
             assert!(
                 (15..=22).contains(&len),
                 "client_order_id '{}' has length {}, expected 15–22 (Section V-D.4)",
-                order.client_order_id, len
+                order.client_order_id,
+                len
             );
         }
     }
@@ -250,8 +252,15 @@ fn test_order_instrument_id_from_instrument_set() {
     let order_messages = Scenario::OrderEntry.generate_messages_with_seed(42);
 
     // Collect instrument IDs from ticks
-    let tick_instruments: HashSet<u64> = tick_messages.iter()
-        .filter_map(|m| if let Message::Tick(t) = m { Some(t.instrument_id) } else { None })
+    let tick_instruments: HashSet<u64> = tick_messages
+        .iter()
+        .filter_map(|m| {
+            if let Message::Tick(t) = m {
+                Some(t.instrument_id)
+            } else {
+                None
+            }
+        })
         .collect();
 
     // All order instrument IDs must be in the same set
@@ -279,8 +288,10 @@ fn test_order_book_large_level_range() {
                 "OrderBook bids has {} levels, expected 70–100",
                 bid_levels
             );
-            assert_eq!(bid_levels, ask_levels, "bids and asks should have equal depth");
+            assert_eq!(
+                bid_levels, ask_levels,
+                "bids and asks should have equal depth"
+            );
         }
     }
 }
-

@@ -1,4 +1,4 @@
-use crate::messages::{Tick, Order, OrderBook};
+use crate::messages::{Order, OrderBook, Tick};
 use std::hint::black_box;
 
 pub fn encode_tick(tick: &Tick) -> Vec<u8> {

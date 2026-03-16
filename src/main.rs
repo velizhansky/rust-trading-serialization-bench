@@ -39,9 +39,9 @@ fn main() {
             let rt_p99_us = rt.p99_ns as f64 / 1000.0;
             let rt_p999_us = rt.p999_ns as f64 / 1000.0;
 
-            println!("  Round-trip: p50={:.2}us  p99={:.2}us  p99.9={:.2}us  TAR={:.2}x  LSC={:.4}",
-                rt_us, rt_p99_us, rt_p999_us,
-                rt.tail_amplification_p99, rt.lsc,
+            println!(
+                "  Round-trip: p50={:.2}us  p99={:.2}us  p99.9={:.2}us  TAR={:.2}x  LSC={:.4}",
+                rt_us, rt_p99_us, rt_p999_us, rt.tail_amplification_p99, rt.lsc,
             );
             println!(
                 "  Size: {:.0}B median  Throughput: {:.0} msg/s  ({:.2} MB/s)",

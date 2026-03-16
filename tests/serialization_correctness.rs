@@ -1,4 +1,6 @@
-use rust_trading_serialization_bench::messages::{Tick, Order, OrderBook, PriceLevel, Side, OrderType};
+use rust_trading_serialization_bench::messages::{
+    Order, OrderBook, OrderType, PriceLevel, Side, Tick,
+};
 use rust_trading_serialization_bench::protocols;
 
 #[test]
@@ -13,7 +15,7 @@ fn test_tick_json_roundtrip() {
         side: Side::Buy,
         trade_id: 12345,
     };
-    
+
     let json = serde_json::to_vec(&tick).unwrap();
     let tick_back: Tick = serde_json::from_slice(&json).unwrap();
     assert_eq!(tick, tick_back);
@@ -31,9 +33,12 @@ fn test_tick_bincode_roundtrip() {
         side: Side::Buy,
         trade_id: 12345,
     };
-    
-    let bytes = bincode_next::serde::encode_to_vec(&tick, bincode_next::config::standard()).unwrap();
-    let tick_back: Tick = bincode_next::serde::decode_from_slice(&bytes, bincode_next::config::standard()).unwrap().0;
+
+    let bytes = bincode_next::serde::encode_to_vec(tick, bincode_next::config::standard()).unwrap();
+    let tick_back: Tick =
+        bincode_next::serde::decode_from_slice(&bytes, bincode_next::config::standard())
+            .unwrap()
+            .0;
     assert_eq!(tick, tick_back);
 }
 
@@ -49,7 +54,7 @@ fn test_tick_rkyv_roundtrip() {
         side: Side::Buy,
         trade_id: 12345,
     };
-    
+
     let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&tick).unwrap();
     let tick_back: Tick = rkyv::from_bytes::<Tick, rkyv::rancor::Error>(&bytes).unwrap();
     assert_eq!(tick, tick_back);
@@ -68,7 +73,7 @@ fn test_order_json_roundtrip() {
         price: 50000,
         quantity: 1,
     };
-    
+
     let json = serde_json::to_vec(&order).unwrap();
     let order_back: Order = serde_json::from_slice(&json).unwrap();
     assert_eq!(order, order_back);
@@ -87,7 +92,7 @@ fn test_order_rkyv_roundtrip() {
         price: 50000,
         quantity: 1,
     };
-    
+
     let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&order).unwrap();
     let order_back: Order = rkyv::from_bytes::<Order, rkyv::rancor::Error>(&bytes).unwrap();
     assert_eq!(order, order_back);
@@ -101,15 +106,27 @@ fn test_order_book_json_roundtrip() {
         ingest_ts_ns: 2000,
         seq_num: 1,
         bids: vec![
-            PriceLevel { price: 50000, quantity: 10 },
-            PriceLevel { price: 49990, quantity: 20 },
+            PriceLevel {
+                price: 50000,
+                quantity: 10,
+            },
+            PriceLevel {
+                price: 49990,
+                quantity: 20,
+            },
         ],
         asks: vec![
-            PriceLevel { price: 50010, quantity: 15 },
-            PriceLevel { price: 50020, quantity: 25 },
+            PriceLevel {
+                price: 50010,
+                quantity: 15,
+            },
+            PriceLevel {
+                price: 50020,
+                quantity: 25,
+            },
         ],
     };
-    
+
     let json = serde_json::to_vec(&book).unwrap();
     let book_back: OrderBook = serde_json::from_slice(&json).unwrap();
     assert_eq!(book, book_back);
@@ -123,15 +140,27 @@ fn test_order_book_rkyv_roundtrip() {
         ingest_ts_ns: 2000,
         seq_num: 1,
         bids: vec![
-            PriceLevel { price: 50000, quantity: 10 },
-            PriceLevel { price: 49990, quantity: 20 },
+            PriceLevel {
+                price: 50000,
+                quantity: 10,
+            },
+            PriceLevel {
+                price: 49990,
+                quantity: 20,
+            },
         ],
         asks: vec![
-            PriceLevel { price: 50010, quantity: 15 },
-            PriceLevel { price: 50020, quantity: 25 },
+            PriceLevel {
+                price: 50010,
+                quantity: 15,
+            },
+            PriceLevel {
+                price: 50020,
+                quantity: 25,
+            },
         ],
     };
-    
+
     let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&book).unwrap();
     let book_back: OrderBook = rkyv::from_bytes::<OrderBook, rkyv::rancor::Error>(&bytes).unwrap();
     assert_eq!(book, book_back);
@@ -149,7 +178,7 @@ fn test_tick_protobuf_roundtrip() {
         side: Side::Buy,
         trade_id: 12345,
     };
-    
+
     let bytes = protocols::protobuf::encode_tick(&tick);
     let tick_back = protocols::protobuf::decode_tick(&bytes);
     assert_eq!(tick, tick_back);
@@ -168,7 +197,7 @@ fn test_order_protobuf_roundtrip() {
         price: 50000,
         quantity: 1,
     };
-    
+
     let bytes = protocols::protobuf::encode_order(&order);
     let order_back = protocols::protobuf::decode_order(&bytes);
     assert_eq!(order, order_back);
@@ -182,15 +211,27 @@ fn test_order_book_protobuf_roundtrip() {
         ingest_ts_ns: 2000,
         seq_num: 1,
         bids: vec![
-            PriceLevel { price: 50000, quantity: 10 },
-            PriceLevel { price: 49990, quantity: 20 },
+            PriceLevel {
+                price: 50000,
+                quantity: 10,
+            },
+            PriceLevel {
+                price: 49990,
+                quantity: 20,
+            },
         ],
         asks: vec![
-            PriceLevel { price: 50010, quantity: 15 },
-            PriceLevel { price: 50020, quantity: 25 },
+            PriceLevel {
+                price: 50010,
+                quantity: 15,
+            },
+            PriceLevel {
+                price: 50020,
+                quantity: 25,
+            },
         ],
     };
-    
+
     let bytes = protocols::protobuf::encode_order_book(&book);
     let book_back = protocols::protobuf::decode_order_book(&bytes);
     assert_eq!(book, book_back);
@@ -208,7 +249,7 @@ fn test_tick_flatbuffers_roundtrip() {
         side: Side::Buy,
         trade_id: 12345,
     };
-    
+
     let bytes = protocols::flatbuffers::encode_tick(&tick);
     let tick_back = protocols::flatbuffers::decode_tick(&bytes);
     assert_eq!(tick, tick_back);
@@ -227,7 +268,7 @@ fn test_order_flatbuffers_roundtrip() {
         price: 50000,
         quantity: 1,
     };
-    
+
     let bytes = protocols::flatbuffers::encode_order(&order);
     let order_back = protocols::flatbuffers::decode_order(&bytes);
     assert_eq!(order, order_back);
@@ -241,15 +282,27 @@ fn test_order_book_flatbuffers_roundtrip() {
         ingest_ts_ns: 2000,
         seq_num: 1,
         bids: vec![
-            PriceLevel { price: 50000, quantity: 10 },
-            PriceLevel { price: 49990, quantity: 20 },
+            PriceLevel {
+                price: 50000,
+                quantity: 10,
+            },
+            PriceLevel {
+                price: 49990,
+                quantity: 20,
+            },
         ],
         asks: vec![
-            PriceLevel { price: 50010, quantity: 15 },
-            PriceLevel { price: 50020, quantity: 25 },
+            PriceLevel {
+                price: 50010,
+                quantity: 15,
+            },
+            PriceLevel {
+                price: 50020,
+                quantity: 25,
+            },
         ],
     };
-    
+
     let bytes = protocols::flatbuffers::encode_order_book(&book);
     let book_back = protocols::flatbuffers::decode_order_book(&bytes);
     assert_eq!(book, book_back);
@@ -273,7 +326,10 @@ fn test_rkyv_zero_copy_access_tick() {
     };
     let bytes = protocols::rkyv::encode_tick(&tick);
     let id = protocols::rkyv::access_tick(&bytes);
-    assert_eq!(id, 42, "rkyv access_tick should return correct instrument_id");
+    assert_eq!(
+        id, 42,
+        "rkyv access_tick should return correct instrument_id"
+    );
 }
 
 #[test]
@@ -290,7 +346,10 @@ fn test_flatbuffers_zero_copy_access_tick() {
     };
     let bytes = protocols::flatbuffers::encode_tick(&tick);
     let id = protocols::flatbuffers::access_tick(&bytes);
-    assert_eq!(id, 42, "flatbuffers access_tick should return correct instrument_id");
+    assert_eq!(
+        id, 42,
+        "flatbuffers access_tick should return correct instrument_id"
+    );
 }
 
 #[test]
@@ -301,16 +360,26 @@ fn test_rkyv_zero_copy_access_order_book() {
         ingest_ts_ns: 2000,
         seq_num: 1,
         bids: vec![
-            PriceLevel { price: 50000, quantity: 10 },
-            PriceLevel { price: 49990, quantity: 20 },
+            PriceLevel {
+                price: 50000,
+                quantity: 10,
+            },
+            PriceLevel {
+                price: 49990,
+                quantity: 20,
+            },
         ],
-        asks: vec![
-            PriceLevel { price: 50010, quantity: 15 },
-        ],
+        asks: vec![PriceLevel {
+            price: 50010,
+            quantity: 15,
+        }],
     };
     let bytes = protocols::rkyv::encode_order_book(&book);
     let id = protocols::rkyv::access_order_book(&bytes);
-    assert_eq!(id, 99, "rkyv access_order_book should return correct instrument_id");
+    assert_eq!(
+        id, 99,
+        "rkyv access_order_book should return correct instrument_id"
+    );
 }
 
 #[test]
@@ -321,15 +390,24 @@ fn test_flatbuffers_zero_copy_access_order_book() {
         ingest_ts_ns: 2000,
         seq_num: 1,
         bids: vec![
-            PriceLevel { price: 50000, quantity: 10 },
-            PriceLevel { price: 49990, quantity: 20 },
+            PriceLevel {
+                price: 50000,
+                quantity: 10,
+            },
+            PriceLevel {
+                price: 49990,
+                quantity: 20,
+            },
         ],
-        asks: vec![
-            PriceLevel { price: 50010, quantity: 15 },
-        ],
+        asks: vec![PriceLevel {
+            price: 50010,
+            quantity: 15,
+        }],
     };
     let bytes = protocols::flatbuffers::encode_order_book(&book);
     let id = protocols::flatbuffers::access_order_book(&bytes);
-    assert_eq!(id, 99, "flatbuffers access_order_book should return correct instrument_id");
+    assert_eq!(
+        id, 99,
+        "flatbuffers access_order_book should return correct instrument_id"
+    );
 }
-

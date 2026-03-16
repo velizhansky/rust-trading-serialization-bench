@@ -64,10 +64,13 @@ fn main() {
     println!("cargo:rustc-env=BUILD_LTO={}", lto);
 
     // rustc version
-    if let Ok(output) = std::process::Command::new("rustc").arg("--version").output()
-        && let Ok(version) = String::from_utf8(output.stdout) {
-            println!("cargo:rustc-env=BUILD_RUSTC_VERSION={}", version.trim());
-        }
+    if let Ok(output) = std::process::Command::new("rustc")
+        .arg("--version")
+        .output()
+        && let Ok(version) = String::from_utf8(output.stdout)
+    {
+        println!("cargo:rustc-env=BUILD_RUSTC_VERSION={}", version.trim());
+    }
 
     // Parse dependency versions from Cargo.lock (single source of truth)
     if let Ok(lock_content) = std::fs::read_to_string("Cargo.lock") {
@@ -97,10 +100,11 @@ fn parse_lto_from_cargo_toml() -> Option<String> {
             in_profile_release = true;
         } else if trimmed.starts_with('[') {
             in_profile_release = false;
-        } else if in_profile_release && trimmed.starts_with("lto") {
-            if let Some(val) = trimmed.split('=').nth(1) {
-                return Some(val.trim().trim_matches('"').to_string());
-            }
+        } else if in_profile_release
+            && trimmed.starts_with("lto")
+            && let Some(val) = trimmed.split('=').nth(1)
+        {
+            return Some(val.trim().trim_matches('"').to_string());
         }
     }
     None
@@ -112,14 +116,10 @@ fn parse_cargo_lock_version(content: &str, package_name: &str) -> Option<String>
     for line in content.lines() {
         let trimmed = line.trim();
         if trimmed.starts_with("name = ") {
-            let name = trimmed
-                .trim_start_matches("name = ")
-                .trim_matches('"');
+            let name = trimmed.trim_start_matches("name = ").trim_matches('"');
             found_name = name == package_name;
         } else if found_name && trimmed.starts_with("version = ") {
-            let version = trimmed
-                .trim_start_matches("version = ")
-                .trim_matches('"');
+            let version = trimmed.trim_start_matches("version = ").trim_matches('"');
             return Some(version.to_string());
         } else if trimmed == "[[package]]" {
             found_name = false;

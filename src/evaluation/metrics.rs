@@ -16,20 +16,20 @@ use std::time::Duration;
 #[derive(Debug, Clone, Serialize)]
 pub struct LatencyStats {
     pub mean_ns: f64,
-    pub median_ns: u64,       // p50 — used as TAR denominator
+    pub median_ns: u64, // p50 — used as TAR denominator
     pub p90_ns: u64,
     pub p95_ns: u64,
-    pub p99_ns: u64,          // TLP primary metric (Section IV-A.2)
-    pub p999_ns: u64,         // reported but not in composite score
-    pub p9999_ns: u64,        // reported but not in composite score
+    pub p99_ns: u64,   // TLP primary metric (Section IV-A.2)
+    pub p999_ns: u64,  // reported but not in composite score
+    pub p9999_ns: u64, // reported but not in composite score
     pub min_ns: u64,
     pub max_ns: u64,
     pub std_dev_ns: f64,
     pub jitter_coefficient: f64, // CV = σ/μ — reported for prior-work comparability (Section IV-A.4)
     pub lsc: f64,                // LSC = MAD/median — primary stability metric (Section IV-A.4)
     pub sample_count: u64,
-    pub tail_amplification_p99: f64,   // TAR = p99/p50 (Section IV-A.3)
-    pub tail_amplification_p999: f64,  // diagnostic: p99.9/p50
+    pub tail_amplification_p99: f64, // TAR = p99/p50 (Section IV-A.3)
+    pub tail_amplification_p999: f64, // diagnostic: p99.9/p50
     pub tail_amplification_p9999: f64, // diagnostic: p99.99/p50
 }
 
@@ -113,14 +113,18 @@ impl LatencyRecorder {
 
     pub fn record(&mut self, duration: Duration) {
         let nanos = duration.as_nanos() as u64;
-        self.histogram.record(nanos).expect("Failed to record latency");
+        self.histogram
+            .record(nanos)
+            .expect("Failed to record latency");
         if let Some(ref mut raw) = self.raw_values {
             raw.push(nanos);
         }
     }
 
     pub fn record_nanos(&mut self, nanos: u64) {
-        self.histogram.record(nanos).expect("Failed to record latency");
+        self.histogram
+            .record(nanos)
+            .expect("Failed to record latency");
         if let Some(ref mut raw) = self.raw_values {
             raw.push(nanos);
         }
@@ -135,9 +139,21 @@ impl LatencyRecorder {
         let p9999_ns = self.histogram.value_at_quantile(0.9999);
 
         let median_f64 = median_ns as f64;
-        let tail_amplification_p99 = if median_ns > 0 { p99_ns as f64 / median_f64 } else { 1.0 };
-        let tail_amplification_p999 = if median_ns > 0 { p999_ns as f64 / median_f64 } else { 1.0 };
-        let tail_amplification_p9999 = if median_ns > 0 { p9999_ns as f64 / median_f64 } else { 1.0 };
+        let tail_amplification_p99 = if median_ns > 0 {
+            p99_ns as f64 / median_f64
+        } else {
+            1.0
+        };
+        let tail_amplification_p999 = if median_ns > 0 {
+            p999_ns as f64 / median_f64
+        } else {
+            1.0
+        };
+        let tail_amplification_p9999 = if median_ns > 0 {
+            p9999_ns as f64 / median_f64
+        } else {
+            1.0
+        };
 
         let jitter_coefficient = if mean > 0.0 { std_dev / mean } else { 0.0 };
 
@@ -187,10 +203,7 @@ fn compute_lsc(raw: &[u64], median: u64) -> f64 {
         return 0.0;
     }
 
-    let mut deviations: Vec<u64> = raw
-        .iter()
-        .map(|&x| x.abs_diff(median))
-        .collect();
+    let mut deviations: Vec<u64> = raw.iter().map(|&x| x.abs_diff(median)).collect();
     deviations.sort_unstable();
 
     let mad = if deviations.len().is_multiple_of(2) {
@@ -315,9 +328,18 @@ impl ProtocolMetrics {
 
         println!("\nEncode Latency (us):");
         println!("  P50:    {:.2}", encode_us.median);
-        println!("  P99:    {:.2} ({:.2}x)", encode_us.p99, self.encode_latency.tail_amplification_p99);
-        println!("  P99.9:  {:.2} ({:.2}x)", encode_us.p999, self.encode_latency.tail_amplification_p999);
-        println!("  P99.99: {:.2} ({:.2}x)", encode_us.p9999, self.encode_latency.tail_amplification_p9999);
+        println!(
+            "  P99:    {:.2} ({:.2}x)",
+            encode_us.p99, self.encode_latency.tail_amplification_p99
+        );
+        println!(
+            "  P99.9:  {:.2} ({:.2}x)",
+            encode_us.p999, self.encode_latency.tail_amplification_p999
+        );
+        println!(
+            "  P99.99: {:.2} ({:.2}x)",
+            encode_us.p9999, self.encode_latency.tail_amplification_p9999
+        );
         println!("  Jitter: {:.3}", self.encode_latency.jitter_coefficient);
         if let Some(amp) = self.encode_latency_amplification {
             println!("  Amplification: {:.2}x", amp);
@@ -325,9 +347,18 @@ impl ProtocolMetrics {
 
         println!("\nDecode Latency (us):");
         println!("  P50:    {:.2}", decode_us.median);
-        println!("  P99:    {:.2} ({:.2}x)", decode_us.p99, self.decode_latency.tail_amplification_p99);
-        println!("  P99.9:  {:.2} ({:.2}x)", decode_us.p999, self.decode_latency.tail_amplification_p999);
-        println!("  P99.99: {:.2} ({:.2}x)", decode_us.p9999, self.decode_latency.tail_amplification_p9999);
+        println!(
+            "  P99:    {:.2} ({:.2}x)",
+            decode_us.p99, self.decode_latency.tail_amplification_p99
+        );
+        println!(
+            "  P99.9:  {:.2} ({:.2}x)",
+            decode_us.p999, self.decode_latency.tail_amplification_p999
+        );
+        println!(
+            "  P99.99: {:.2} ({:.2}x)",
+            decode_us.p9999, self.decode_latency.tail_amplification_p9999
+        );
         println!("  Jitter: {:.3}", self.decode_latency.jitter_coefficient);
         if let Some(amp) = self.decode_latency_amplification {
             println!("  Amplification: {:.2}x", amp);
@@ -336,24 +367,38 @@ impl ProtocolMetrics {
         println!("\nMessage Size:");
         println!("  Median: {:.0} bytes", self.message_size.median_bytes);
         println!("  Mean:   {:.1} bytes", self.message_size.mean_bytes);
-        println!("  Range:  {} - {} bytes", self.message_size.min_bytes, self.message_size.max_bytes);
+        println!(
+            "  Range:  {} - {} bytes",
+            self.message_size.min_bytes, self.message_size.max_bytes
+        );
 
         println!("\nThroughput (steady state):");
         println!("  {:.0} msg/sec", self.throughput_msg_per_sec);
-        println!("  {:.2} MB/sec", self.throughput_bytes_per_sec / 1_000_000.0);
+        println!(
+            "  {:.2} MB/sec",
+            self.throughput_bytes_per_sec / 1_000_000.0
+        );
         println!("  {:.2} bytes/msg", self.message_size.median_bytes);
     }
 
     pub fn print_csv_header() {
-        println!("protocol,scenario,encode_p50,encode_p99,encode_p999,encode_p9999,encode_jitter,encode_tail_p99,encode_tail_p999,encode_tail_p9999,encode_amp,decode_p50,decode_p99,decode_p999,decode_p9999,decode_jitter,decode_tail_p99,decode_tail_p999,decode_tail_p9999,decode_amp,size_median,size_mean,size_min,size_max,throughput_msg_sec,throughput_mb_sec,bytes_per_msg");
+        println!(
+            "protocol,scenario,encode_p50,encode_p99,encode_p999,encode_p9999,encode_jitter,encode_tail_p99,encode_tail_p999,encode_tail_p9999,encode_amp,decode_p50,decode_p99,decode_p999,decode_p9999,decode_jitter,decode_tail_p99,decode_tail_p999,decode_tail_p9999,decode_amp,size_median,size_mean,size_min,size_max,throughput_msg_sec,throughput_mb_sec,bytes_per_msg"
+        );
     }
 
     pub fn print_csv_row(&self) {
         let encode_us = self.encode_latency.to_micros();
         let decode_us = self.decode_latency.to_micros();
 
-        let encode_amp = self.encode_latency_amplification.map(|a| format!("{:.2}", a)).unwrap_or_else(|| "1.00".to_string());
-        let decode_amp = self.decode_latency_amplification.map(|a| format!("{:.2}", a)).unwrap_or_else(|| "1.00".to_string());
+        let encode_amp = self
+            .encode_latency_amplification
+            .map(|a| format!("{:.2}", a))
+            .unwrap_or_else(|| "1.00".to_string());
+        let decode_amp = self
+            .decode_latency_amplification
+            .map(|a| format!("{:.2}", a))
+            .unwrap_or_else(|| "1.00".to_string());
 
         println!(
             "{},{},{:.2},{:.2},{:.2},{:.2},{:.3},{:.2},{:.2},{:.2},{},{:.2},{:.2},{:.2},{:.2},{:.3},{:.2},{:.2},{:.2},{},{:.0},{:.1},{},{},{:.0},{:.2},{:.0}",
@@ -404,20 +449,37 @@ impl RunResult {
         fn lat(s: &LatencyStats) -> String {
             format!(
                 "{},{},{},{},{:.1},{},{},{:.1},{:.6},{:.4},{:.4},{:.4}",
-                s.median_ns, s.p99_ns, s.p999_ns, s.p9999_ns,
-                s.mean_ns, s.min_ns, s.max_ns, s.std_dev_ns,
+                s.median_ns,
+                s.p99_ns,
+                s.p999_ns,
+                s.p9999_ns,
+                s.mean_ns,
+                s.min_ns,
+                s.max_ns,
+                s.std_dev_ns,
                 s.jitter_coefficient,
-                s.tail_amplification_p99, s.tail_amplification_p999, s.tail_amplification_p9999,
+                s.tail_amplification_p99,
+                s.tail_amplification_p999,
+                s.tail_amplification_p9999,
             )
         }
 
         let rt = &self.roundtrip_latency;
         let rt_csv = format!(
             "{},{},{},{},{:.1},{},{},{:.1},{:.6},{:.6},{:.4},{:.4},{:.4}",
-            rt.median_ns, rt.p99_ns, rt.p999_ns, rt.p9999_ns,
-            rt.mean_ns, rt.min_ns, rt.max_ns, rt.std_dev_ns,
-            rt.jitter_coefficient, rt.lsc,
-            rt.tail_amplification_p99, rt.tail_amplification_p999, rt.tail_amplification_p9999,
+            rt.median_ns,
+            rt.p99_ns,
+            rt.p999_ns,
+            rt.p9999_ns,
+            rt.mean_ns,
+            rt.min_ns,
+            rt.max_ns,
+            rt.std_dev_ns,
+            rt.jitter_coefficient,
+            rt.lsc,
+            rt.tail_amplification_p99,
+            rt.tail_amplification_p999,
+            rt.tail_amplification_p9999,
         );
 
         format!(
