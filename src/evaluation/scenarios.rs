@@ -42,7 +42,15 @@ pub const MIXED_BOOK_SMALL_RATIO: f64 = 0.07;
 pub const MIXED_BOOK_MEDIUM_RATIO: f64 = 0.02;
 // Remaining 1% = large order books (100 levels).
 
-const BUY_PROBABILITY: f64 = 0.52;       // Section V-D.1: 52% buy / 48% sell
+// Buy/sell asymmetry by message type (Section V-D.1):
+//   Ticks:  52% buy / 48% sell — reflects execution-side bias where
+//           market orders from buyers hit the ask more often.
+//   Orders: 48% buy / 52% sell — reflects submission-side bias where
+//           sellers place more passive limit orders.
+// The inversion models the empirical observation that execution flow
+// (ticks) and order flow (submissions) have opposing directional skew.
+const TICK_BUY_PROBABILITY: f64 = 0.52;
+const ORDER_BUY_PROBABILITY: f64 = 0.48;
 const LIMIT_ORDER_PROBABILITY: f64 = 0.85; // Section V-D.1: 85% limit / 15% market
 
 pub enum Message {
@@ -146,18 +154,18 @@ impl Scenario {
 fn generate_tick(rng: &mut StdRng, seq_num: u64, base_ts: u64) -> Tick {
     let instrument_idx = rng.random_range(0..INSTRUMENTS.len());
     let price_idx = rng.random_range(0..BASE_PRICES.len());
-    let price_variance = rng.random_range(-5000..5000);   // ±5K tick units (Section V-D.1)
+    let price_variance = rng.random_range(-5000..=5000);   // ±5K tick units (Section V-D.1)
     let quantity_base = rng.random_range(1000..100000);    // range 1K–110K
-    let side = if rng.random_bool(BUY_PROBABILITY) { Side::Buy } else { Side::Sell };
-    let ts_jitter = rng.random_range(0..10000);            // 0–10μs jitter (Section V-F.4)
+    let side = if rng.random_bool(TICK_BUY_PROBABILITY) { Side::Buy } else { Side::Sell };
+    let ts_jitter = rng.random_range(0..=10000);           // 0–10μs jitter (Section V-D.3)
 
     Tick {
         instrument_id: INSTRUMENTS[instrument_idx],
         exchange_ts_ns: base_ts + (seq_num * 1000) + ts_jitter,
-        ingest_ts_ns: base_ts + (seq_num * 1000) + ts_jitter + rng.random_range(100..1000),
+        ingest_ts_ns: base_ts + (seq_num * 1000) + ts_jitter + rng.random_range(100..=1000),
         seq_num,
         price: BASE_PRICES[price_idx] + price_variance,
-        quantity: quantity_base + rng.random_range(0..10000),
+        quantity: quantity_base + rng.random_range(0..=10000),
         side,
         trade_id: rng.random_range(1000000..9999999),
     }
@@ -170,13 +178,11 @@ fn generate_order(rng: &mut StdRng, order_id: u64, base_ts: u64) -> Order {
     let instrument_idx = rng.random_range(0..INSTRUMENTS.len()); // same 15 instruments as Tick/OB
     let symbol_idx = rng.random_range(0..SYMBOLS.len());
     let price_idx = rng.random_range(0..BASE_PRICES.len());
-    let price_variance = rng.random_range(-10000..10000);
+    let price_variance = rng.random_range(-10000..=10000);
     let quantity_base = rng.random_range(1000..50000);
-    // Orders use inverted buy probability (48% buy) vs ticks (52% buy),
-    // reflecting different market participant behavior on submission vs execution.
-    let side = if rng.random_bool(1.0 - BUY_PROBABILITY) { Side::Buy } else { Side::Sell };
+    let side = if rng.random_bool(ORDER_BUY_PROBABILITY) { Side::Buy } else { Side::Sell };
     let order_type = if rng.random_bool(LIMIT_ORDER_PROBABILITY) { OrderType::Limit } else { OrderType::Market };
-    let ts_jitter = rng.random_range(0..20000);
+    let ts_jitter = rng.random_range(0..=20000);
 
     // client_order_id: 15–22 chars (Section V-D.4).
     // Format: "CLO" (3) + 8-digit id + "_" + 3–10 digit suffix = 15–22 chars.
@@ -193,7 +199,7 @@ fn generate_order(rng: &mut StdRng, order_id: u64, base_ts: u64) -> Order {
         side,
         order_type,
         price: BASE_PRICES[price_idx] + price_variance,
-        quantity: quantity_base + rng.random_range(0..20000),
+        quantity: quantity_base + rng.random_range(0..=20000),
     }
 }
 
@@ -205,7 +211,7 @@ fn generate_order_book(rng: &mut StdRng, seq_num: u64, levels: usize, base_ts: u
     let instrument_idx = rng.random_range(0..INSTRUMENTS.len());
     let price_idx = rng.random_range(0..BASE_PRICES.len());
     let base_price = BASE_PRICES[price_idx];
-    let ts_jitter = rng.random_range(0..50000); // 0–50μs jitter for book updates
+    let ts_jitter = rng.random_range(0..=50000); // 0–50μs jitter for book updates (Section V-D.3)
 
     // S5 (levels>20): random depth between 70% and 100% of target (Section V-D.1).
     // S3/S4 (levels≤20): fixed depth.
@@ -236,7 +242,7 @@ fn generate_order_book(rng: &mut StdRng, seq_num: u64, levels: usize, base_ts: u
     OrderBook {
         instrument_id: INSTRUMENTS[instrument_idx],
         exchange_ts_ns: base_ts + (seq_num * 10000) + ts_jitter,
-        ingest_ts_ns: base_ts + (seq_num * 10000) + ts_jitter + rng.random_range(500..2000),
+        ingest_ts_ns: base_ts + (seq_num * 10000) + ts_jitter + rng.random_range(500..=2000),
         seq_num,
         bids,
         asks,

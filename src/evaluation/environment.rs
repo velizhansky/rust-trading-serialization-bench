@@ -24,13 +24,16 @@ pub struct EnvironmentInfo {
     pub os: String,
     pub kernel_version: String,
 
-    // Rust
+    // Rust toolchain and optimization (Section IV-D.6)
     pub rustc_version: String,
     pub cargo_profile: String,
+    pub opt_level: String,
+    pub lto: String,
 
     // CPU power management
     pub cpu_governor: String,
     pub turbo_boost: String,
+    pub cpu_current_freq_mhz: String,
 
     // Timer
     pub timer_resolution_ns: u64,
@@ -69,9 +72,12 @@ pub fn capture_environment() -> EnvironmentInfo {
         // Build-time captured via env!() from build.rs (Section IV-D.6).
         rustc_version: env!("BUILD_RUSTC_VERSION").to_string(),
         cargo_profile: env!("BUILD_PROFILE").to_string(),
+        opt_level: env!("BUILD_OPT_LEVEL").to_string(),
+        lto: env!("BUILD_LTO").to_string(),
 
         cpu_governor: read_cpu_governor(),
         turbo_boost: read_turbo_boost(),
+        cpu_current_freq_mhz: read_cpu_current_freq_mhz(),
 
         timer_resolution_ns: measure_timer_resolution(),
 
@@ -301,6 +307,20 @@ fn read_turbo_boost() -> String {
         };
     }
     "unknown".to_string()
+}
+
+fn read_cpu_current_freq_mhz() -> String {
+    // Linux: current CPU frequency from cpufreq
+    if let Some(khz) = read_file_trimmed("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq") {
+        if let Ok(khz_val) = khz.parse::<u64>() {
+            return format!("{}", khz_val / 1000);
+        }
+    }
+    // macOS: sysctl hw.cpufrequency (base frequency in Hz)
+    run_command("sysctl", &["-n", "hw.cpufrequency"])
+        .and_then(|s| s.parse::<u64>().ok())
+        .map(|hz| format!("{}", hz / 1_000_000))
+        .unwrap_or_else(|| "unknown".to_string())
 }
 
 fn measure_timer_resolution() -> u64 {

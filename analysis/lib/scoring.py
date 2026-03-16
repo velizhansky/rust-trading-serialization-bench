@@ -120,6 +120,25 @@ def validate_runs(df: pd.DataFrame) -> list[str]:
     if total != expected_total:
         warnings.append(f"Total rows: {total} (expected {expected_total})")
 
+    # Check throughput corpus exhaustion (single forward pass, no wrap-around).
+    # If all runs for a (protocol, scenario) exhausted the corpus, throughput
+    # was measured over a shorter-than-5s window. This is expected for small
+    # scenarios (e.g., OrderBook 95K messages) with fast protocols, but worth
+    # flagging for transparency.
+    if "throughput_corpus_exhausted" in df.columns:
+        for p in sorted(protocols):
+            for s in sorted(scenarios):
+                mask = (df["protocol"] == p) & (df["scenario"] == s)
+                subset = df[mask]
+                if len(subset) == 0:
+                    continue
+                exhausted = subset["throughput_corpus_exhausted"].sum()
+                if exhausted == len(subset):
+                    warnings.append(
+                        f"  {p}/{s}: all {exhausted} runs exhausted throughput corpus "
+                        f"(throughput measured over < 5s window)"
+                    )
+
     return warnings
 
 

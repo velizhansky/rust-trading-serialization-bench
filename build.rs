@@ -53,11 +53,15 @@ fn main() {
     // --- Build-time environment capture (Section IV-D.6) ---
     // Emit compile-time env vars for environment.rs to pick up via env!().
 
-    // Cargo build profile and optimization level
+    // Cargo build profile, optimization level, and LTO setting
     let profile = std::env::var("PROFILE").unwrap_or_else(|_| "unknown".into());
     let opt_level = std::env::var("OPT_LEVEL").unwrap_or_else(|_| "unknown".into());
+    // LTO is not directly available as an env var in build scripts;
+    // parse from Cargo.toml [profile.release] if present.
+    let lto = parse_lto_from_cargo_toml().unwrap_or_else(|| "default".into());
     println!("cargo:rustc-env=BUILD_PROFILE={}", profile);
     println!("cargo:rustc-env=BUILD_OPT_LEVEL={}", opt_level);
+    println!("cargo:rustc-env=BUILD_LTO={}", lto);
 
     // rustc version
     if let Ok(output) = std::process::Command::new("rustc").arg("--version").output()
@@ -81,6 +85,25 @@ fn main() {
             }
         }
     }
+}
+
+/// Extract LTO setting from Cargo.toml [profile.release] section.
+fn parse_lto_from_cargo_toml() -> Option<String> {
+    let content = std::fs::read_to_string("Cargo.toml").ok()?;
+    let mut in_profile_release = false;
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed == "[profile.release]" {
+            in_profile_release = true;
+        } else if trimmed.starts_with('[') {
+            in_profile_release = false;
+        } else if in_profile_release && trimmed.starts_with("lto") {
+            if let Some(val) = trimmed.split('=').nth(1) {
+                return Some(val.trim().trim_matches('"').to_string());
+            }
+        }
+    }
+    None
 }
 
 /// Extract version for a package from Cargo.lock TOML.

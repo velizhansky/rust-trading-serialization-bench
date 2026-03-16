@@ -2,7 +2,7 @@
 //! from Section IV-D:
 //!
 //!   Phase 1 — Warmup (5,000 messages, excluded from measurement)
-//!   Phase 2 — Throughput (5-second continuous window, immediately after warmup)
+//!   Phase 2 — Throughput (single forward pass, up to 5-second window, immediately after warmup)
 //!   Phase 3 — Latency (per-message encode/decode/round-trip timing)
 //!
 //! Each invocation of `evaluate_single_run` measures one (protocol, scenario, seed)
@@ -160,9 +160,8 @@ impl EvaluationRunner {
         self.warmup(protocol, &messages[..WARMUP_MESSAGES]);
 
         // Phase 2: Throughput — immediately after warmup (per Section IV-A.6).
-        // Uses only post-warmup messages to avoid re-measuring warmup data.
-        // Cycles through post-warmup slice to fill the 5-second window.
-        let (throughput_msg_per_sec, throughput_bytes_per_sec) =
+        // Single forward pass over post-warmup messages, no wrap-around.
+        let (throughput_msg_per_sec, throughput_bytes_per_sec, throughput_corpus_exhausted) =
             self.measure_throughput(protocol, &messages[WARMUP_MESSAGES..]);
 
         // Phase 3: Latency measurement — messages after warmup.
@@ -202,6 +201,7 @@ impl EvaluationRunner {
             message_size: size_recorder.finalize(),
             throughput_msg_per_sec,
             throughput_bytes_per_sec,
+            throughput_corpus_exhausted,
             total_messages: messages.len(),
             warmup_messages: WARMUP_MESSAGES,
             measured_messages,
@@ -239,9 +239,23 @@ impl EvaluationRunner {
         }
     }
 
-    fn measure_throughput(&self, protocol: ProtocolType, messages: &[Message]) -> (f64, f64) {
+    /// Throughput measurement: single forward pass over post-warmup corpus
+    /// within a 5-second deadline (Section IV-A.6).
+    ///
+    /// **No wrap-around**: messages are consumed exactly once. If the corpus is
+    /// exhausted before the deadline, the actual elapsed time is used to compute
+    /// the rate. This avoids the methodological ambiguity of cycling through
+    /// the same data, which would measure steady-state cache-hot throughput
+    /// rather than the "first continuous interval following warmup completion"
+    /// specified in the paper.
+    ///
+    /// For the smallest scenario (OrderBook, 95K post-warmup messages) at the
+    /// fastest protocol, a single pass typically completes within the deadline.
+    /// The field `throughput_corpus_exhausted` in `RunResult` records whether
+    /// the corpus was fully consumed before the 5-second window elapsed.
+    fn measure_throughput(&self, protocol: ProtocolType, messages: &[Message]) -> (f64, f64, bool) {
         if messages.is_empty() {
-            return (0.0, 0.0);
+            return (0.0, 0.0, true);
         }
 
         let deadline = Duration::from_secs(THROUGHPUT_DURATION_SECS);
@@ -249,47 +263,46 @@ impl EvaluationRunner {
         let mut total_bytes = 0usize;
         let mut total_messages = 0usize;
 
-        // Cycle through post-warmup messages to fill the 5-second window.
+        // Single forward pass — no wrap-around (Section IV-A.6).
         // Uses access_* (zero-copy for rkyv/FB) to match latency measurement semantics.
-        while start.elapsed() < deadline {
-            for message in messages {
-                let size = match message {
-                    Message::Tick(tick) => {
-                        let enc = self.encode_tick(protocol, tick);
-                        let size = enc.len();
-                        let id = self.access_tick(protocol, &enc);
-                        black_box(id);
-                        size
-                    }
-                    Message::Order(order) => {
-                        let enc = self.encode_order(protocol, order);
-                        let size = enc.len();
-                        let id = self.access_order(protocol, &enc);
-                        black_box(id);
-                        size
-                    }
-                    Message::OrderBook(book) => {
-                        let enc = self.encode_order_book(protocol, book);
-                        let size = enc.len();
-                        let id = self.access_order_book(protocol, &enc);
-                        black_box(id);
-                        size
-                    }
-                };
-                total_bytes += size;
-                total_messages += 1;
-
-                if start.elapsed() >= deadline {
-                    break;
-                }
+        for message in messages {
+            if start.elapsed() >= deadline {
+                break;
             }
+
+            let size = match message {
+                Message::Tick(tick) => {
+                    let enc = self.encode_tick(protocol, tick);
+                    let size = enc.len();
+                    let id = self.access_tick(protocol, &enc);
+                    black_box(id);
+                    size
+                }
+                Message::Order(order) => {
+                    let enc = self.encode_order(protocol, order);
+                    let size = enc.len();
+                    let id = self.access_order(protocol, &enc);
+                    black_box(id);
+                    size
+                }
+                Message::OrderBook(book) => {
+                    let enc = self.encode_order_book(protocol, book);
+                    let size = enc.len();
+                    let id = self.access_order_book(protocol, &enc);
+                    black_box(id);
+                    size
+                }
+            };
+            total_bytes += size;
+            total_messages += 1;
         }
 
         let elapsed_secs = start.elapsed().as_secs_f64();
+        let corpus_exhausted = total_messages == messages.len();
         let msg_per_sec = total_messages as f64 / elapsed_secs;
         let bytes_per_sec = total_bytes as f64 / elapsed_secs;
 
-        (msg_per_sec, bytes_per_sec)
+        (msg_per_sec, bytes_per_sec, corpus_exhausted)
     }
 
     /// Benchmark a single Tick message: encode + access (decode for traditional,
