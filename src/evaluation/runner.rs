@@ -303,7 +303,7 @@ impl EvaluationRunner {
         let id = self.access_tick(protocol, &encoded);
         let decode_time = start.elapsed();
 
-        if iteration % 1000 == 0 {
+        if iteration.is_multiple_of(1000) {
             assert_eq!(tick.instrument_id, id);
         }
         (encoded, encode_time, decode_time)
@@ -318,7 +318,7 @@ impl EvaluationRunner {
         let id = self.access_order(protocol, &encoded);
         let decode_time = start.elapsed();
 
-        if iteration % 1000 == 0 {
+        if iteration.is_multiple_of(1000) {
             assert_eq!(order.order_id, id);
         }
         (encoded, encode_time, decode_time)
@@ -333,7 +333,7 @@ impl EvaluationRunner {
         let id = self.access_order_book(protocol, &encoded);
         let decode_time = start.elapsed();
 
-        if iteration % 1000 == 0 {
+        if iteration.is_multiple_of(1000) {
             assert_eq!(book.instrument_id, id);
         }
         (encoded, encode_time, decode_time)

@@ -182,11 +182,11 @@ fn compute_lsc(raw: &[u64], median: u64) -> f64 {
 
     let mut deviations: Vec<u64> = raw
         .iter()
-        .map(|&x| if x > median { x - median } else { median - x })
+        .map(|&x| x.abs_diff(median))
         .collect();
     deviations.sort_unstable();
 
-    let mad = if deviations.len() % 2 == 0 {
+    let mad = if deviations.len().is_multiple_of(2) {
         let mid = deviations.len() / 2;
         (deviations[mid - 1] + deviations[mid]) / 2
     } else {
@@ -235,7 +235,7 @@ impl SizeRecorder {
         let mut sorted_sizes = self.sizes.clone();
         sorted_sizes.sort_unstable();
 
-        let median_bytes = if sorted_sizes.len() % 2 == 0 {
+        let median_bytes = if sorted_sizes.len().is_multiple_of(2) {
             let mid = sorted_sizes.len() / 2;
             (sorted_sizes[mid - 1] + sorted_sizes[mid]) as f64 / 2.0
         } else {

@@ -12,29 +12,23 @@ use rkyv::{Archive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[derive(Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
 #[repr(u8)]
+#[derive(Default)]
 pub enum Side {
+    #[default]
     Unspecified = 0,
     Buy = 1,
     Sell = 2,
 }
 
-impl Default for Side {
-    fn default() -> Self {
-        Self::Unspecified
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[derive(Serialize, Deserialize, Archive, RkyvSerialize, RkyvDeserialize)]
 #[repr(u8)]
+#[derive(Default)]
 pub enum OrderType {
+    #[default]
     Unspecified = 0,
     Limit = 1,
     Market = 2,
 }
 
-impl Default for OrderType {
-    fn default() -> Self {
-        Self::Unspecified
-    }
-}

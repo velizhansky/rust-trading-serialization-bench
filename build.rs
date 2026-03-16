@@ -60,11 +60,10 @@ fn main() {
     println!("cargo:rustc-env=BUILD_OPT_LEVEL={}", opt_level);
 
     // rustc version
-    if let Ok(output) = std::process::Command::new("rustc").arg("--version").output() {
-        if let Ok(version) = String::from_utf8(output.stdout) {
+    if let Ok(output) = std::process::Command::new("rustc").arg("--version").output()
+        && let Ok(version) = String::from_utf8(output.stdout) {
             println!("cargo:rustc-env=BUILD_RUSTC_VERSION={}", version.trim());
         }
-    }
 
     // Parse dependency versions from Cargo.lock (single source of truth)
     if let Ok(lock_content) = std::fs::read_to_string("Cargo.lock") {

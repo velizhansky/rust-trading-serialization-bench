@@ -138,11 +138,10 @@ fn read_cpu_model() -> String {
     // Linux: /proc/cpuinfo
     if let Some(cpuinfo) = read_file_trimmed("/proc/cpuinfo") {
         for line in cpuinfo.lines() {
-            if line.starts_with("model name") {
-                if let Some(val) = line.split(':').nth(1) {
+            if line.starts_with("model name")
+                && let Some(val) = line.split(':').nth(1) {
                     return val.trim().to_string();
                 }
-            }
         }
     }
     // macOS: sysctl
@@ -160,11 +159,10 @@ fn read_cpu_cores() -> usize {
                 if let Some(val) = line.split(':').nth(1) {
                     phys_id = val.trim().to_string();
                 }
-            } else if line.starts_with("core id") {
-                if let Some(val) = line.split(':').nth(1) {
+            } else if line.starts_with("core id")
+                && let Some(val) = line.split(':').nth(1) {
                     cores.insert(format!("{}:{}", phys_id, val.trim()));
                 }
-            }
         }
         if !cores.is_empty() {
             return cores.len();
@@ -242,11 +240,10 @@ fn read_memory_total_mb() -> u64 {
         for line in meminfo.lines() {
             if line.starts_with("MemTotal:") {
                 let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() >= 2 {
-                    if let Ok(kb) = parts[1].parse::<u64>() {
+                if parts.len() >= 2
+                    && let Ok(kb) = parts[1].parse::<u64>() {
                         return kb / 1024;
                     }
-                }
             }
         }
     }
@@ -321,10 +318,9 @@ fn measure_timer_resolution() -> u64 {
 
 fn read_hostname() -> String {
     // Try /etc/hostname first (Linux)
-    if let Some(h) = read_file_trimmed("/etc/hostname") {
-        if !h.is_empty() {
+    if let Some(h) = read_file_trimmed("/etc/hostname")
+        && !h.is_empty() {
             return h;
         }
-    }
     run_command("hostname", &[]).unwrap_or_else(|| "unknown".to_string())
 }
