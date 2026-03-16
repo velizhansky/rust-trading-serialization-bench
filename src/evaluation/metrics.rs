@@ -72,6 +72,9 @@ pub struct RunResult {
     /// the 5-second deadline elapsed. Logged for transparency — indicates the
     /// throughput rate is a lower bound measured over a shorter window.
     pub throughput_corpus_exhausted: bool,
+    /// Number of messages actually processed during the throughput phase.
+    /// Invariant: throughput_processed <= (total_messages - warmup_messages).
+    pub throughput_processed: usize,
     pub total_messages: usize,
     pub warmup_messages: usize,
     pub measured_messages: usize,
@@ -392,7 +395,7 @@ impl RunResult {
          decode_p50_ns,decode_p99_ns,decode_p999_ns,decode_p9999_ns,decode_mean_ns,decode_min_ns,decode_max_ns,decode_stddev_ns,decode_cv,decode_tar_p99,decode_tar_p999,decode_tar_p9999,\
          rt_p50_ns,rt_p99_ns,rt_p999_ns,rt_p9999_ns,rt_mean_ns,rt_min_ns,rt_max_ns,rt_stddev_ns,rt_cv,rt_lsc,rt_tar_p99,rt_tar_p999,rt_tar_p9999,\
          size_median,size_mean,size_min,size_max,\
-         throughput_msg_sec,throughput_bytes_sec,throughput_corpus_exhausted,\
+         throughput_msg_sec,throughput_bytes_sec,throughput_corpus_exhausted,throughput_processed,\
          total_messages,warmup_messages,measured_messages"
             .to_string()
     }
@@ -418,7 +421,7 @@ impl RunResult {
         );
 
         format!(
-            "{},{},{},{},{},{},{},{:.1},{:.1},{},{},{:.1},{:.1},{},{},{},{}",
+            "{},{},{},{},{},{},{},{:.1},{:.1},{},{},{:.1},{:.1},{},{},{},{},{}",
             self.protocol_name,
             self.scenario_name,
             self.seed,
@@ -433,6 +436,7 @@ impl RunResult {
             self.throughput_msg_per_sec,
             self.throughput_bytes_per_sec,
             self.throughput_corpus_exhausted,
+            self.throughput_processed,
             self.total_messages,
             self.warmup_messages,
             self.measured_messages,

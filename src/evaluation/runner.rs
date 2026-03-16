@@ -161,8 +161,15 @@ impl EvaluationRunner {
 
         // Phase 2: Throughput — immediately after warmup (per Section IV-A.6).
         // Single forward pass over post-warmup messages, no wrap-around.
-        let (throughput_msg_per_sec, throughput_bytes_per_sec, throughput_corpus_exhausted) =
-            self.measure_throughput(protocol, &messages[WARMUP_MESSAGES..]);
+        let post_warmup = &messages[WARMUP_MESSAGES..];
+        let (throughput_msg_per_sec, throughput_bytes_per_sec, throughput_corpus_exhausted, throughput_processed) =
+            self.measure_throughput(protocol, post_warmup);
+        debug_assert!(
+            throughput_processed <= post_warmup.len(),
+            "throughput processed {} messages but corpus has only {}",
+            throughput_processed,
+            post_warmup.len()
+        );
 
         // Phase 3: Latency measurement — messages after warmup.
         // Three separate HDR histograms per Section IV-D.3.
@@ -202,38 +209,53 @@ impl EvaluationRunner {
             throughput_msg_per_sec,
             throughput_bytes_per_sec,
             throughput_corpus_exhausted,
+            throughput_processed,
             total_messages: messages.len(),
             warmup_messages: WARMUP_MESSAGES,
             measured_messages,
         }
     }
 
+    /// Warmup phase: exercises the same encode + access path that the
+    /// throughput and latency phases measure (Section IV-C.2).
+    ///
+    /// For traditional protocols (JSON, Bincode, Protobuf) access_* performs
+    /// full deserialization. For zero-copy protocols (rkyv, FlatBuffers)
+    /// access_* performs buffer validation + field traversal without
+    /// allocating owned structures — matching the measured code path exactly.
+    ///
+    /// Correctness spot-checks use the full decode_* path (every 100 messages)
+    /// to verify round-trip integrity without affecting which code path is
+    /// warmed up for measurement.
     fn warmup(&self, protocol: ProtocolType, messages: &[Message]) {
         for (i, message) in messages.iter().enumerate() {
             match message {
                 Message::Tick(tick) => {
                     let encoded = self.encode_tick(protocol, tick);
-                    let decoded = self.decode_tick(protocol, &encoded);
+                    let id = self.access_tick(protocol, &encoded);
+                    black_box(id);
                     if i % 100 == 0 {
+                        let decoded = self.decode_tick(protocol, &encoded);
                         assert_eq!(tick.instrument_id, decoded.instrument_id);
                     }
-                    black_box((encoded, decoded));
                 }
                 Message::Order(order) => {
                     let encoded = self.encode_order(protocol, order);
-                    let decoded = self.decode_order(protocol, &encoded);
+                    let id = self.access_order(protocol, &encoded);
+                    black_box(id);
                     if i % 100 == 0 {
+                        let decoded = self.decode_order(protocol, &encoded);
                         assert_eq!(order.order_id, decoded.order_id);
                     }
-                    black_box((encoded, decoded));
                 }
                 Message::OrderBook(book) => {
                     let encoded = self.encode_order_book(protocol, book);
-                    let decoded = self.decode_order_book(protocol, &encoded);
+                    let id = self.access_order_book(protocol, &encoded);
+                    black_box(id);
                     if i % 100 == 0 {
+                        let decoded = self.decode_order_book(protocol, &encoded);
                         assert_eq!(book.instrument_id, decoded.instrument_id);
                     }
-                    black_box((encoded, decoded));
                 }
             }
         }
@@ -253,9 +275,10 @@ impl EvaluationRunner {
     /// fastest protocol, a single pass typically completes within the deadline.
     /// The field `throughput_corpus_exhausted` in `RunResult` records whether
     /// the corpus was fully consumed before the 5-second window elapsed.
-    fn measure_throughput(&self, protocol: ProtocolType, messages: &[Message]) -> (f64, f64, bool) {
+    /// Returns (msg_per_sec, bytes_per_sec, corpus_exhausted, processed_messages).
+    fn measure_throughput(&self, protocol: ProtocolType, messages: &[Message]) -> (f64, f64, bool, usize) {
         if messages.is_empty() {
-            return (0.0, 0.0, true);
+            return (0.0, 0.0, true, 0);
         }
 
         let deadline = Duration::from_secs(THROUGHPUT_DURATION_SECS);
@@ -302,7 +325,7 @@ impl EvaluationRunner {
         let msg_per_sec = total_messages as f64 / elapsed_secs;
         let bytes_per_sec = total_bytes as f64 / elapsed_secs;
 
-        (msg_per_sec, bytes_per_sec, corpus_exhausted)
+        (msg_per_sec, bytes_per_sec, corpus_exhausted, total_messages)
     }
 
     /// Benchmark a single Tick message: encode + access (decode for traditional,

@@ -126,8 +126,8 @@ fn test_evaluate_single_run() {
     let columns: Vec<&str> = csv_row.split(',').collect();
     assert_eq!(
         columns.len(),
-        51,
-        "CSV row should have 51 columns, got {}",
+        52,
+        "CSV row should have 52 columns, got {}",
         columns.len()
     );
 }
@@ -136,8 +136,8 @@ fn test_evaluate_single_run() {
 ///
 /// The throughput phase must never process more messages than the post-warmup
 /// corpus contains. This test verifies the "no wrap-around" design choice
-/// (Section IV-A.6) by checking `throughput_corpus_exhausted` is reported
-/// accurately and throughput remains positive regardless.
+/// (Section IV-A.6) by asserting `throughput_processed <= post_warmup_len`
+/// for every protocol on the smallest scenario (OrderBookSmall, 95K messages).
 #[test]
 fn test_throughput_no_wrap_around() {
     let config = EvaluationConfig {
@@ -147,10 +147,20 @@ fn test_throughput_no_wrap_around() {
     };
 
     let runner = EvaluationRunner::new(config);
+    let post_warmup_len = Scenario::OrderBookSmall.sample_count() - 5_000; // 95,000
 
     // Run all 5 protocols on the smallest scenario to cover fast and slow paths
     for protocol in ProtocolType::all() {
         let result = runner.evaluate_single_run(protocol, &Scenario::OrderBookSmall, 42, 0);
+
+        // Hard invariant: throughput never wraps around
+        assert!(
+            result.throughput_processed <= post_warmup_len,
+            "{}: throughput processed {} messages but corpus has only {} — wrap-around detected!",
+            protocol.name(),
+            result.throughput_processed,
+            post_warmup_len,
+        );
 
         // Throughput must always be positive
         assert!(
@@ -159,16 +169,15 @@ fn test_throughput_no_wrap_around() {
             protocol.name()
         );
 
-        // The corpus_exhausted flag must be a valid bool (always present)
-        // If exhausted, throughput was measured over < 5 seconds (acceptable)
-        // If not exhausted, the deadline was reached first (ideal case)
-        if result.throughput_corpus_exhausted {
-            eprintln!(
-                "NOTE: {} exhausted OrderBookSmall corpus before 5s deadline \
-                 (fast protocol, small corpus). Throughput is a lower-bound estimate.",
-                protocol.name()
-            );
-        }
+        // Corpus exhaustion flag must be consistent with processed count
+        assert_eq!(
+            result.throughput_corpus_exhausted,
+            result.throughput_processed == post_warmup_len,
+            "{}: corpus_exhausted flag inconsistent with processed count ({}/{})",
+            protocol.name(),
+            result.throughput_processed,
+            post_warmup_len,
+        );
     }
 }
 

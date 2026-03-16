@@ -179,7 +179,7 @@ fn test_roundtrip_histogram() {
 fn test_csv_header_column_count() {
     let header = RunResult::csv_header();
     let columns: Vec<&str> = header.split(',').collect();
-    // 4 meta + 12 encode + 12 decode + 13 rt + 4 size + 2 throughput + 1 exhausted + 3 counts = 51
-    assert_eq!(columns.len(), 51, "CSV header should have 51 columns, got {}", columns.len());
+    // 4 meta + 12 encode + 12 decode + 13 rt + 4 size + 2 throughput + 1 exhausted + 1 processed + 3 counts = 52
+    assert_eq!(columns.len(), 52, "CSV header should have 52 columns, got {}", columns.len());
 }
 
