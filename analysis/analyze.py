@@ -183,8 +183,8 @@ def generate_plots(results, df, profile_scores, sweep_result, win_fractions, out
             vals = [getter(r).median / 1000.0 for r in scenario_results]
             ci_lo = [getter(r).ci_low / 1000.0 for r in scenario_results]
             ci_hi = [getter(r).ci_high / 1000.0 for r in scenario_results]
-            yerr_lo = [v - lo for v, lo in zip(vals, ci_lo)]
-            yerr_hi = [hi - v for v, hi in zip(vals, ci_hi)]
+            yerr_lo = [max(0, v - lo) for v, lo in zip(vals, ci_lo)]
+            yerr_hi = [max(0, hi - v) for v, hi in zip(vals, ci_hi)]
             ax.bar(
                 x + i * width,
                 vals,
