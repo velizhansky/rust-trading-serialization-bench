@@ -1,0 +1,16 @@
+\begin{table}[htbp]
+\centering
+\caption{Monte Carlo Robustness: Win Fraction (\%) over 10{,}000 Dirichlet Samples}
+\label{tab:monte_carlo}
+\begin{tabular}{lrrrrrrrr}
+\hline
+Protocol & S1 & S2 & S3 & S4 & S5 & S6 & S7 & Overall \\
+\hline
+  JSON & 0.2 & 22.1 & 2.2 & 11.7 & 0.0 & 0.0 & 0.0 & 5.2 \\
+  Bincode & 0.1 & 0.3 & 44.5 & 57.4 & 20.4 & 0.1 & 0.7 & 17.6 \\
+  rkyv & 61.8 & 35.1 & 40.1 & 27.9 & 13.6 & 98.1 & 90.6 & 52.5 \\
+  Protobuf & 8.4 & 42.5 & 0.0 & 1.8 & 0.0 & 0.0 & 0.0 & 7.5 \\
+  FlatBuffers & 29.4 & 0.1 & 13.2 & 1.3 & 66.0 & 1.7 & 8.7 & 17.2 \\
+\hline
+\end{tabular}
+\end{table}

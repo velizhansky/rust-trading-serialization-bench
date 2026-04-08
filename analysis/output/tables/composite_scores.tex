@@ -1,0 +1,50 @@
+\begin{table*}[htbp]
+\centering
+\caption{Composite Scores by Usage Profile}
+\label{tab:composite_scores}
+\begin{tabular}{lrrrrrrrr}
+\hline
+\multicolumn{9}{l}{\textbf{Tail-Sensitive} ($w_{\mathrm{TLP}}=0.35$, $w_{\mathrm{TAR}}=0.25$, $w_{\mathrm{LSC}}=0.20$, $w_{\mathrm{SE}}=0.10$, $w_{\mathrm{TP}}=0.10$)} \\
+\hline
+Protocol & S1 & S2 & S3 & S4 & S5 & S6 & S7 & Mean Rank \\
+\hline
+  JSON & 0.596 & 0.550 & 0.574 & 0.550 & 0.746 & 0.717 & 0.763 & 5.0 \\
+  Bincode & 0.438 & 0.492 & 0.231 & 0.268 & 0.280 & 0.544 & 0.427 & 2.4 \\
+  rkyv & 0.297 & 0.459 & 0.324 & 0.479 & 0.475 & 0.050 & 0.086 & 2.4 \\
+  Protobuf & 0.417 & 0.377 & 0.465 & 0.344 & 0.356 & 0.648 & 0.578 & 3.1 \\
+  FlatBuffers & 0.294 & 0.496 & 0.247 & 0.337 & 0.155 & 0.186 & 0.163 & 2.0 \\
+\hline
+\end{tabular}
+\vspace{0.5em}
+
+\begin{tabular}{lrrrrrrrr}
+\hline
+\multicolumn{9}{l}{\textbf{Balanced} ($w_{\mathrm{TLP}}=0.20$, $w_{\mathrm{TAR}}=0.20$, $w_{\mathrm{LSC}}=0.20$, $w_{\mathrm{SE}}=0.20$, $w_{\mathrm{TP}}=0.20$)} \\
+\hline
+Protocol & S1 & S2 & S3 & S4 & S5 & S6 & S7 & Mean Rank \\
+\hline
+  JSON & 0.646 & 0.600 & 0.624 & 0.600 & 0.793 & 0.741 & 0.775 & 5.0 \\
+  Bincode & 0.455 & 0.486 & 0.266 & 0.327 & 0.349 & 0.535 & 0.456 & 2.4 \\
+  rkyv & 0.262 & 0.432 & 0.300 & 0.457 & 0.450 & 0.058 & 0.086 & 2.1 \\
+  Protobuf & 0.442 & 0.382 & 0.498 & 0.396 & 0.407 & 0.603 & 0.558 & 3.0 \\
+  FlatBuffers & 0.347 & 0.530 & 0.318 & 0.410 & 0.213 & 0.292 & 0.269 & 2.4 \\
+\hline
+\end{tabular}
+\vspace{0.5em}
+
+\begin{tabular}{lrrrrrrrr}
+\hline
+\multicolumn{9}{l}{\textbf{Throughput-Oriented} ($w_{\mathrm{TLP}}=0.10$, $w_{\mathrm{TAR}}=0.10$, $w_{\mathrm{LSC}}=0.10$, $w_{\mathrm{SE}}=0.20$, $w_{\mathrm{TP}}=0.50$)} \\
+\hline
+Protocol & S1 & S2 & S3 & S4 & S5 & S6 & S7 & Mean Rank \\
+\hline
+  JSON & 0.823 & 0.800 & 0.812 & 0.800 & 0.897 & 0.870 & 0.887 & 5.0 \\
+  Bincode & 0.520 & 0.464 & 0.419 & 0.509 & 0.533 & 0.553 & 0.514 & 2.7 \\
+  rkyv & 0.146 & 0.238 & 0.177 & 0.257 & 0.250 & 0.044 & 0.058 & 1.0 \\
+  Protobuf & 0.506 & 0.419 & 0.608 & 0.587 & 0.593 & 0.624 & 0.599 & 3.4 \\
+  FlatBuffers & 0.560 & 0.640 & 0.496 & 0.511 & 0.329 & 0.504 & 0.496 & 2.9 \\
+\hline
+\end{tabular}
+\vspace{0.5em}
+
+\end{table*}
